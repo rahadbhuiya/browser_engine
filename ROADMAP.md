@@ -25,10 +25,16 @@ depending on Chromium/WebKit/Gecko internals.
 - [ ] Malformed-HTML recovery (never panic/crash on bad input — security requirement)
 - [ ] Unit tests against basic real-world HTML snippets
 
-### Batch 2 — CSS Parser + CSSOM (1-1.5 months)
-- [ ] CSS tokenizer + parser (selectors, declarations, at-rules)
-- [ ] CSSOM tree
-- [ ] Cascade: specificity, `!important`, inheritance, source order
+### Batch 2 — CSS Parser + CSSOM (1-1.5 months)  done
+- [x] CSS tokenizer + parser (selectors, declarations, at-rules)
+- [x] CSSOM tree (`Stylesheet`, `Rule`, `Selector`, `Declaration`)
+- [x] Cascade: specificity (id/class/type counts), `!important`, source order preserved
+- [x] Combinators: descendant, child (`>`), next-sibling (`+`), subsequent-sibling (`~`)
+- [x] At-rules (`@media`, etc.) recognized and safely skipped as whole blocks
+- [ ] Pseudo-classes (`:hover`, `:nth-child`, ...) — not yet supported; an
+      unsupported selector currently causes the *whole rule* to be dropped
+      cleanly rather than misparsed. Revisit when building selector matching
+      in Batch 3.
 
 ### Batch 3 — Style Resolution + Layout Engine (2-3 months)
 - [ ] Selector matching (DOM node → matched CSS rules → computed style)
@@ -77,4 +83,6 @@ together. Batch 5 (JS engine) is the biggest risk — attempt it only after stat
 page rendering works, to keep motivation and momentum.
 
 ## Status
-Currently on: **Batch 1 — HTML Tokenizer**
+Batch 1 (HTML tokenizer) and Batch 2 (CSS parser + CSSOM) done.
+Currently on: **Batch 1 remainder — DOM tree builder** (tokenizer → DOM tree),
+or **Batch 3 — Style resolution + Layout**, whichever you want to tackle next.
