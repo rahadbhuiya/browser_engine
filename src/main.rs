@@ -1,8 +1,14 @@
 mod css;
+mod dom;
 mod html;
+mod layout;
+mod style;
 
 use css::{CssParser, CssTokenizer};
+use dom::build_dom;
 use html::Tokenizer;
+use layout::{build_layout_tree, layout_tree};
+use style::compute_styles;
 
 fn main() {
     let samples = [
@@ -44,6 +50,46 @@ fn main() {
             }
         }
         println!();
+    }
+
+    println!("--- Batch 3: DOM + style + layout end-to-end ---");
+    let html_doc = r#"<div class="page"><h1 class="title">Diaz's Browser</h1><p>Building from scratch.</p></div>"#;
+    let css_doc = r#"
+        .page { width: 400px; padding: 10px; }
+        .title { color: #222; margin: 0; }
+        p { margin: 8px 0; }
+    "#;
+
+    let dom_tree = build_dom(Tokenizer::new(html_doc).tokenize());
+    let stylesheet = CssParser::new(CssTokenizer::new(css_doc).tokenize()).parse();
+    let styles = compute_styles(&dom_tree, &stylesheet);
+
+    if let Some(mut layout_root) = build_layout_tree(&dom_tree, &styles, dom_tree.root) {
+        layout_tree(&mut layout_root, 800.0, &styles);
+        print_layout_box(&layout_root, 0);
+    }
+}
+
+fn print_layout_box(lb: &layout::LayoutBox, depth: usize) {
+    let indent = "  ".repeat(depth);
+    let d = lb.dimensions.content;
+    match lb.box_type {
+        layout::BoxType::Block(node_idx) => {
+            println!(
+                "{indent}Block(node {node_idx}) x={:.0} y={:.0} w={:.0} h={:.0}",
+                d.x, d.y, d.width, d.height
+            );
+        }
+        layout::BoxType::Anonymous => {
+            println!(
+                "{indent}Text(\"{}\") x={:.0} y={:.0} w={:.0} h={:.0}",
+                lb.text_content.as_deref().unwrap_or(""),
+                d.x, d.y, d.width, d.height
+            );
+        }
+    }
+    for child in &lb.children {
+        print_layout_box(child, depth + 1);
     }
 }
 
@@ -246,6 +292,162 @@ mod css_tests {
         ];
         for input in inputs {
             let _ = parse(input);
+        }
+    }
+}
+
+#[cfg(test)]
+mod batch3_tests {
+    use super::css::{CssParser, CssTokenizer};
+    use super::dom::build_dom;
+    use super::html::Tokenizer;
+    use super::layout::{build_layout_tree, layout_tree, BoxType};
+    use super::style::compute_styles;
+
+    fn build(html: &str, css: &str) -> (super::dom::Dom, super::css::Stylesheet) {
+        let dom = build_dom(Tokenizer::new(html).tokenize());
+        let sheet = CssParser::new(CssTokenizer::new(css).tokenize()).parse();
+        (dom, sheet)
+    }
+
+    #[test]
+    fn dom_builder_creates_correct_tree_shape() {
+        let dom = build_dom(Tokenizer::new("<div><p>hi</p><p>bye</p></div>").tokenize());
+        let div_idx = dom.nodes[dom.root].children[0];
+        let div = dom.element_at(div_idx).unwrap();
+        assert_eq!(div.tag, "div");
+        assert_eq!(dom.nodes[div_idx].children.len(), 2);
+    }
+
+    #[test]
+    fn dom_builder_recovers_from_mismatched_tags() {
+        // </span> with no matching open <span> must not panic or corrupt the tree
+        let dom = build_dom(Tokenizer::new("<div>text</span><p>ok</p></div>").tokenize());
+        let div_idx = dom.nodes[dom.root].children[0];
+        // both the stray text and the <p> should still be children of <div>
+        assert_eq!(dom.nodes[div_idx].children.len(), 2);
+    }
+
+    #[test]
+    fn dom_builder_handles_void_elements_without_consuming_stack() {
+        let dom = build_dom(Tokenizer::new("<div><br><p>after br</p></div>").tokenize());
+        let div_idx = dom.nodes[dom.root].children[0];
+        // <br> should not have swallowed <p> as its child
+        assert_eq!(dom.nodes[div_idx].children.len(), 2);
+        let br_idx = dom.nodes[div_idx].children[0];
+        assert_eq!(dom.nodes[br_idx].children.len(), 0);
+    }
+
+    #[test]
+    fn style_matches_tag_class_and_id_selectors() {
+        let (dom, sheet) = build(
+            r#"<div id="main" class="card"><p>hi</p></div>"#,
+            "#main { color: red; } .card { padding: 5px; } p { margin: 1px; }",
+        );
+        let styles = compute_styles(&dom, &sheet);
+        let div_idx = dom.nodes[dom.root].children[0];
+        let div_style = &styles[&div_idx];
+        assert_eq!(div_style.get("color"), Some(&"red".to_string()));
+        assert_eq!(div_style.get("padding"), Some(&"5px".to_string()));
+    }
+
+    #[test]
+    fn style_cascade_respects_specificity_over_source_order() {
+        // .a comes later in source but #id has higher specificity and must win
+        let (dom, sheet) = build(
+            r#"<div id="x" class="a"></div>"#,
+            "#x { color: blue; } .a { color: red; }",
+        );
+        let styles = compute_styles(&dom, &sheet);
+        let div_idx = dom.nodes[dom.root].children[0];
+        assert_eq!(styles[&div_idx].get("color"), Some(&"blue".to_string()));
+    }
+
+    #[test]
+    fn style_important_beats_higher_specificity() {
+        let (dom, sheet) = build(
+            r#"<div id="x" class="a"></div>"#,
+            "#x { color: blue; } .a { color: red !important; }",
+        );
+        let styles = compute_styles(&dom, &sheet);
+        let div_idx = dom.nodes[dom.root].children[0];
+        assert_eq!(styles[&div_idx].get("color"), Some(&"red".to_string()));
+    }
+
+    #[test]
+    fn style_inherits_color_from_parent() {
+        let (dom, sheet) = build(r#"<div><p>hi</p></div>"#, "div { color: green; }");
+        let styles = compute_styles(&dom, &sheet);
+        let div_idx = dom.nodes[dom.root].children[0];
+        let p_idx = dom.nodes[div_idx].children[0];
+        assert_eq!(styles[&p_idx].get("color"), Some(&"green".to_string()));
+    }
+
+    #[test]
+    fn style_child_combinator_matches_direct_child_only() {
+        let (dom, sheet) = build(
+            r#"<div><span><em>deep</em></span><em>direct</em></div>"#,
+            "div > em { color: red; }",
+        );
+        let styles = compute_styles(&dom, &sheet);
+        let div_idx = dom.nodes[dom.root].children[0];
+        let span_idx = dom.nodes[div_idx].children[0];
+        let deep_em_idx = dom.nodes[span_idx].children[0];
+        let direct_em_idx = dom.nodes[div_idx].children[1];
+        assert!(styles.get(&deep_em_idx).and_then(|s| s.get("color")).is_none());
+        assert_eq!(
+            styles.get(&direct_em_idx).and_then(|s| s.get("color")),
+            Some(&"red".to_string())
+        );
+    }
+
+    #[test]
+    fn layout_block_boxes_stack_vertically_and_fill_width() {
+        let (dom, sheet) = build(
+            r#"<div class="page"><p>one</p><p>two</p></div>"#,
+            ".page { width: 300px; } p { height: 20px; margin: 5px 0; }",
+        );
+        let styles = compute_styles(&dom, &sheet);
+        let mut root = build_layout_tree(&dom, &styles, dom.root).unwrap();
+        layout_tree(&mut root, 800.0, &styles);
+
+        let page_box = &root.children[0];
+        assert_eq!(page_box.dimensions.content.width, 300.0);
+
+        let p1 = &page_box.children[0];
+        let p2 = &page_box.children[1];
+        // p2 must start below p1's margin box (5px margin + 20px height + 5px margin)
+        assert!(p2.dimensions.content.y > p1.dimensions.content.y);
+        assert_eq!(p1.dimensions.content.height, 20.0);
+    }
+
+    #[test]
+    fn layout_display_none_excludes_node_and_children() {
+        let (dom, sheet) = build(
+            r#"<div><p class="hidden">gone</p><p>visible</p></div>"#,
+            ".hidden { display: none; }",
+        );
+        let styles = compute_styles(&dom, &sheet);
+        let root = build_layout_tree(&dom, &styles, dom.root).unwrap();
+        let div_box = &root.children[0];
+        // only the visible <p> should have produced a layout box
+        assert_eq!(div_box.children.len(), 1);
+        assert!(matches!(div_box.children[0].box_type, BoxType::Block(_)));
+    }
+
+    #[test]
+    fn never_panics_on_malformed_html_css_combo() {
+        let combos = [
+            ("<div", "div { color: red"),
+            ("<div><p></div>", ". { }"),
+            ("<div class=x>text<span>", "div > { color: red; }"),
+        ];
+        for (html, css) in combos {
+            let (dom, sheet) = build(html, css);
+            let styles = compute_styles(&dom, &sheet);
+            if let Some(mut root) = build_layout_tree(&dom, &styles, dom.root) {
+                layout_tree(&mut root, 800.0, &styles);
+            }
         }
     }
 }

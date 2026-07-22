@@ -18,12 +18,14 @@ depending on Chromium/WebKit/Gecko internals.
 
 ## Batch plan
 
-### Batch 1 — HTML Tokenizer + Parser → DOM (current)
-- [ ] Byte stream → token stream (tags, attributes, text, comments, doctype)
-- [ ] WHATWG HTML5 tree-construction algorithm (insertion modes)
-- [ ] DOM tree data structure (Node, Element, Text, Document)
-- [ ] Malformed-HTML recovery (never panic/crash on bad input — security requirement)
-- [ ] Unit tests against basic real-world HTML snippets
+### Batch 1 — HTML Tokenizer + Parser → DOM  done
+- [x] Byte stream → token stream (tags, attributes, text, comments, doctype)
+- [x] DOM tree (arena-based: `Dom { nodes: Vec<DomNode> }`, index-linked parent/children)
+- [x] Malformed-HTML recovery (never panic/crash on bad input — security requirement)
+- [x] Unit tests against basic real-world HTML snippets
+- [ ] Full WHATWG insertion-mode state machine (implied end tags, table
+      foster-parenting, `<script>`/`<style>` raw-text handling) — deferred;
+      current builder is a simplified stack-based tree builder
 
 ### Batch 2 — CSS Parser + CSSOM (1-1.5 months)  done
 - [x] CSS tokenizer + parser (selectors, declarations, at-rules)
@@ -36,12 +38,21 @@ depending on Chromium/WebKit/Gecko internals.
       cleanly rather than misparsed. Revisit when building selector matching
       in Batch 3.
 
-### Batch 3 — Style Resolution + Layout Engine (2-3 months)
-- [ ] Selector matching (DOM node → matched CSS rules → computed style)
-- [ ] Box model (content/padding/border/margin)
-- [ ] Block + inline layout algorithms
-- [ ] Flexbox (Grid deferred to later milestone)
-- [ ] Text shaping integration (harfbuzz/rustybuzz) — Unicode line-breaking
+### Batch 3 — Style Resolution + Layout Engine (2-3 months)  done
+- [x] Selector matching (right-to-left, walks ancestors/siblings via the DOM arena)
+- [x] Cascade → computed style per element, with a fixed inherited-property list
+      (color, font-family, font-size, font-weight, line-height, text-align, visibility)
+- [x] Box model (content/padding/border/margin, `Rect`/`EdgeSizes`/`Dimensions`)
+- [x] Block layout: vertical stacking, auto vs explicit width/height, `display: none`
+- [x] Anonymous boxes wrapping inline-content runs (standard technique for
+      mixed block/inline children)
+- [ ] Flexbox — deferred
+- [ ] Real text shaping — text run height/width currently uses a fixed
+      average-character-width heuristic (`AVG_CHAR_WIDTH_PX`/`LINE_HEIGHT_PX`
+      in `layout/engine.rs`), not real font metrics. This is a known,
+      documented approximation until HarfBuzz/font integration in a later batch.
+- [ ] Inline elements (`<span>`, `<a>`, ...) don't get their own boxes yet —
+      their text is flattened into the surrounding run
 
 ### Batch 4 — Paint + Compositor (1-1.5 months)
 - [ ] Layout tree → paint command list (rects, text runs, images)
@@ -83,6 +94,9 @@ together. Batch 5 (JS engine) is the biggest risk — attempt it only after stat
 page rendering works, to keep motivation and momentum.
 
 ## Status
-Batch 1 (HTML tokenizer) and Batch 2 (CSS parser + CSSOM) done.
-Currently on: **Batch 1 remainder — DOM tree builder** (tokenizer → DOM tree),
-or **Batch 3 — Style resolution + Layout**, whichever you want to tackle next.
+Batch 1 (HTML tokenizer + DOM), Batch 2 (CSS parser + CSSOM), and Batch 3
+(style resolution + block layout) are done. 27 tests passing.
+Currently on: **Batch 4 — Paint + Compositor** (turning layout boxes into
+actual pixels/GPU draw calls), or revisit Batch 3's deferred items
+(pseudo-classes, inline boxes, flexbox) first if you'd rather harden before
+moving on.
