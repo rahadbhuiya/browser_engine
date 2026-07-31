@@ -1,10 +1,12 @@
 mod css;
 mod dom;
 mod html;
+mod js;
 mod layout;
 mod paint;
 mod render;
 mod style;
+
 
 use css::{CssParser, CssTokenizer};
 use dom::build_dom;

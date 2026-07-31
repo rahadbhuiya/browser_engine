@@ -59,13 +59,11 @@ depending on Chromium/WebKit/Gecko internals.
 - [x] GPU-accelerated compositing via `wgpu`
 - [x] Scroll + layer compositing for smooth 60fps feel
 
-### Batch 5 — JavaScript Engine (3-6 months — highest-risk batch)
-- [ ] Lexer → parser → AST
-- [ ] Bytecode compiler + stack-based VM
-- [ ] Garbage collector (mark-sweep to start)
-- [ ] DOM bindings (JS mutating the DOM tree from Batch 1)
-- Fallback option if timeline slips: embed `boa` or `QuickJS` and revisit a
-  from-scratch engine later once the rest of the browser is functional.
+### Batch 5 — JavaScript Engine (3-6 months — highest-risk batch)  done
+- [x] Lexer → parser → AST
+- [x] Bytecode compiler + stack-based VM
+- [x] Garbage collector (mark-sweep to start)
+- [x] DOM bindings (JS mutating the DOM tree from Batch 1)
 
 ### Batch 6 — Networking (1 month)
 - [ ] HTTP/1.1 client, then HTTP/2
@@ -94,5 +92,6 @@ together. Batch 5 (JS engine) is the biggest risk — attempt it only after stat
 page rendering works, to keep motivation and momentum.
 
 ## Status
-Batch 1 (HTML tokenizer + DOM), Batch 2 (CSS parser + CSSOM), Batch 3 (style resolution + block layout), and Batch 4 (Paint + GPU Compositor) are done. 29 tests passing.
-Currently on: **Batch 5 — JavaScript Engine** or **Batch 6 — Networking**.
+Batch 1 (HTML tokenizer + DOM), Batch 2 (CSS parser + CSSOM), Batch 3 (style resolution + block layout), Batch 4 (Paint + GPU Compositor), and Batch 5 (JavaScript Engine) are done. 32 tests passing.
+Currently on: **Batch 6 — Networking** or **Batch 7 — Security Layer**.
+
