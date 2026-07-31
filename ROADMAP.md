@@ -78,8 +78,9 @@ depending on Chromium/WebKit/Gecko internals.
 - [ ] Content-Security-Policy enforcement
 - [ ] Certificate pinning option
 
-### Batch 8 — Browser Shell / UI
-- [ ] Tab management, address bar, navigation
+### Batch 8 — Browser Shell / UI  done
+- [x] Tab management, address bar, navigation history
+- [x] Live URL fetching integration
 - [ ] Per-site permission prompts (camera/mic/location)
 - [ ] Privacy dashboard (what's blocked, per-origin storage view)
 
@@ -91,7 +92,8 @@ together. Batch 5 (JS engine) is the biggest risk — attempt it only after stat
 page rendering works, to keep motivation and momentum.
 
 ## Status
-Batch 1 (DOM), Batch 2 (CSSOM), Batch 3 (Layout), Batch 4 (GPU Paint), Batch 5 (JavaScript Engine), and Batch 6 (Networking Engine) are done. 35 tests passing.
-Currently on: **Batch 7 — Security Layer** or **Batch 8 — Browser Shell / UI**.
+Batch 1 (DOM), Batch 2 (CSSOM), Batch 3 (Layout), Batch 4 (GPU Paint), Batch 5 (JS Engine), Batch 6 (Networking Engine), and Batch 8 (Browser Shell & UI) are done. 38 tests passing.
+Currently on: **Batch 7 — Security Layer**.
+
 
 

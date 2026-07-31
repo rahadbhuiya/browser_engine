@@ -7,6 +7,8 @@ mod net;
 mod paint;
 mod render;
 mod style;
+mod ui;
+
 
 
 
@@ -19,8 +21,36 @@ use render::RenderState;
 
 
 
+pub fn fetch_and_render_page(url_str: &str) -> (dom::Dom, Vec<paint::PaintCommand>) {
+    let (html_content, _css_content) = if url_str.starts_with("http://") || url_str.starts_with("https://") {
+        match net::fetch(url_str) {
+            Ok(resp) => (resp.body_as_string(), "".to_string()),
+            Err(e) => (format!("<html><body><h1>Fetch Error</h1><p>{}</p></body></html>", e), "".to_string()),
+        }
+    } else {
+        (
+            r#"<div class="page"><h1 class="title">Diaz's Secure Browser</h1><p>Type a URL and press Enter to load live pages!</p></div>"#.to_string(),
+            r#".page { width: 400px; padding: 10px; } .title { color: #00f; }"#.to_string(),
+        )
+    };
+
+    let dom_tree = dom::build_dom(html::Tokenizer::new(&html_content).tokenize());
+    let stylesheet = css::CssParser::new(css::CssTokenizer::new("body { color: #333; }").tokenize()).parse();
+    let styles = style::compute_styles(&dom_tree, &stylesheet);
+
+    let display_list = if let Some(mut layout_root) = layout::build_layout_tree(&dom_tree, &styles, dom_tree.root) {
+        layout::layout_tree(&mut layout_root, 800.0, &styles);
+        paint::build_display_list(&layout_root, &styles)
+    } else {
+        vec![]
+    };
+
+    (dom_tree, display_list)
+}
+
 #[cfg(not(test))]
 fn main() {
+
 
     let samples = [
         r#"<!DOCTYPE html><html><body><h1 class="title">Hi Diaz</h1><p>where are you sonali</p><!-- comment --><br/></body></html>"#,
