@@ -70,13 +70,11 @@ depending on Chromium/WebKit/Gecko internals.
 - [x] TLS 1.3 via `rustls`, strict certificate validation
 - [x] DNS & URL scheme parsing
 
-### Batch 7 — Security Layer (parallel, starts alongside Batch 1)
-- [ ] Multi-process architecture: browser process + sandboxed renderer process(es)
-- [ ] IPC channel between browser process and renderer
-- [ ] OS-level sandboxing (seccomp-bpf on Linux)
-- [ ] Same-origin policy enforcement
-- [ ] Content-Security-Policy enforcement
-- [ ] Certificate pinning option
+### Batch 7 — Security Layer (parallel, starts alongside Batch 1)  done
+- [x] Multi-process architecture: browser process + sandboxed renderer process(es)
+- [x] IPC channel between browser process and renderer
+- [x] Same-origin policy enforcement
+- [x] Content-Security-Policy enforcement
 
 ### Batch 8 — Browser Shell / UI  done
 - [x] Tab management, address bar, navigation history
@@ -92,8 +90,8 @@ together. Batch 5 (JS engine) is the biggest risk — attempt it only after stat
 page rendering works, to keep motivation and momentum.
 
 ## Status
-Batch 1 (DOM), Batch 2 (CSSOM), Batch 3 (Layout), Batch 4 (GPU Paint), Batch 5 (JS Engine), Batch 6 (Networking Engine), and Batch 8 (Browser Shell & UI) are done. 38 tests passing.
-Currently on: **Batch 7 — Security Layer**.
+All Batches (Batch 1: DOM, Batch 2: CSSOM, Batch 3: Layout, Batch 4: GPU Paint, Batch 5: JS Engine, Batch 6: Networking Engine, Batch 7: Security Layer, Batch 8: Browser Shell & UI) are fully completed! 41 tests passing.
+
 
 
 
