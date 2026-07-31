@@ -54,10 +54,10 @@ depending on Chromium/WebKit/Gecko internals.
 - [ ] Inline elements (`<span>`, `<a>`, ...) don't get their own boxes yet —
       their text is flattened into the surrounding run
 
-### Batch 4 — Paint + Compositor (1-1.5 months)
-- [ ] Layout tree → paint command list (rects, text runs, images)
-- [ ] GPU-accelerated compositing via `wgpu`
-- [ ] Scroll + layer compositing for smooth 60fps feel
+### Batch 4 — Paint + Compositor (1-1.5 months)  done
+- [x] Layout tree → paint command list (rects, text runs, images)
+- [x] GPU-accelerated compositing via `wgpu`
+- [x] Scroll + layer compositing for smooth 60fps feel
 
 ### Batch 5 — JavaScript Engine (3-6 months — highest-risk batch)
 - [ ] Lexer → parser → AST
@@ -94,9 +94,5 @@ together. Batch 5 (JS engine) is the biggest risk — attempt it only after stat
 page rendering works, to keep motivation and momentum.
 
 ## Status
-Batch 1 (HTML tokenizer + DOM), Batch 2 (CSS parser + CSSOM), and Batch 3
-(style resolution + block layout) are done. 27 tests passing.
-Currently on: **Batch 4 — Paint + Compositor** (turning layout boxes into
-actual pixels/GPU draw calls), or revisit Batch 3's deferred items
-(pseudo-classes, inline boxes, flexbox) first if you'd rather harden before
-moving on.
+Batch 1 (HTML tokenizer + DOM), Batch 2 (CSS parser + CSSOM), Batch 3 (style resolution + block layout), and Batch 4 (Paint + GPU Compositor) are done. 29 tests passing.
+Currently on: **Batch 5 — JavaScript Engine** or **Batch 6 — Networking**.

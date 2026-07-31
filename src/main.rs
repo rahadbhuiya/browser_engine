@@ -2,6 +2,8 @@ mod css;
 mod dom;
 mod html;
 mod layout;
+mod paint;
+mod render;
 mod style;
 
 use css::{CssParser, CssTokenizer};
@@ -9,8 +11,13 @@ use dom::build_dom;
 use html::Tokenizer;
 use layout::{build_layout_tree, layout_tree};
 use style::compute_styles;
+use render::RenderState;
 
+
+
+#[cfg(not(test))]
 fn main() {
+
     let samples = [
         r#"<!DOCTYPE html><html><body><h1 class="title">Hi Diaz</h1><p>where are you sonali</p><!-- comment --><br/></body></html>"#,
         // malformed input on purpose -- tokenizer must not panic
@@ -68,6 +75,102 @@ fn main() {
         layout_tree(&mut layout_root, 800.0, &styles);
         print_layout_box(&layout_root, 0);
     }
+
+    use winit::{
+        event::{Event, WindowEvent},
+        event_loop::EventLoop,
+        window::WindowBuilder,
+        keyboard::{Key, NamedKey},
+    };
+    use std::sync::Arc;
+
+    println!("Starting GUI window for Batch 4...");
+
+    let event_loop = EventLoop::new().unwrap();
+    let window = Arc::new(
+        WindowBuilder::new()
+            .with_title("Diaz's Secure Browser Engine")
+            .with_inner_size(winit::dpi::PhysicalSize::new(800, 600))
+            .build(&event_loop)
+            .unwrap()
+    );
+
+    let mut state = pollster::block_on(RenderState::new(window.clone()));
+    let mut scroll_y: f32 = 0.0;
+
+    event_loop.run(move |event, elwt| {
+        match event {
+            Event::WindowEvent { window_id, event } if window_id == state.window.id() => {
+                match event {
+                    WindowEvent::CloseRequested => elwt.exit(),
+                    WindowEvent::Resized(physical_size) => {
+                        state.resize(physical_size);
+                        state.window.request_redraw();
+                    }
+                    WindowEvent::ScaleFactorChanged { .. } => {
+                        state.resize(state.window.inner_size());
+                        state.window.request_redraw();
+                    }
+                    WindowEvent::KeyboardInput { event: key_event, .. } => {
+                        if key_event.state == winit::event::ElementState::Pressed {
+                            match key_event.logical_key {
+                                Key::Named(NamedKey::ArrowDown) => {
+                                    scroll_y += 20.0;
+                                    state.window.request_redraw();
+                                }
+                                Key::Named(NamedKey::ArrowUp) => {
+                                    scroll_y = (scroll_y - 20.0).max(0.0);
+                                    state.window.request_redraw();
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+                    WindowEvent::RedrawRequested => {
+                        // Re-run the full pipeline: DOM -> Style -> Layout -> Paint -> Render
+                        let html_doc = r#"
+                        <div class="page">
+                            <h1 class="title">Diaz's Secure Browser</h1>
+                            <p>Building a secure, custom browser rendering engine from scratch in Rust.</p>
+                            <p>This page is laid out using a custom Block Formatting Context engine and rendered on the GPU using WGPU!</p>
+                            <p style="color: blue;">Standard features like text color, font sizes, margins, padding, and borders are fully supported.</p>
+                            <br/>
+                            <div class="card" style="background-color: #e0f0ff; border-width: 2px; border-color: #004080; padding: 10px;">
+                                <p style="font-weight: bold; color: #004080;">GPU-Accelerated Compositing</p>
+                                <p>This colored card has custom borders, padding, background color, and margin. Use the ArrowUp and ArrowDown keys to scroll the page smoothly at 60 FPS.</p>
+                            </div>
+                            <br/>
+                            <p style="color: #666; font-size: 14px;">Batch 4 (Compositing + Rasterization) complete.</p>
+                        </div>
+                        "#;
+
+                        let css_doc = r#"
+                            .page { width: 600px; padding: 20px; background-color: #ffffff; }
+                            .title { color: #111; font-size: 32px; margin-bottom: 12px; }
+                            p { color: #333; font-size: 16px; margin: 8px 0; }
+                            .card { margin: 15px 0; }
+                        "#;
+
+                        let dom_tree = build_dom(Tokenizer::new(html_doc).tokenize());
+                        let stylesheet = CssParser::new(CssTokenizer::new(css_doc).tokenize()).parse();
+                        let styles = compute_styles(&dom_tree, &stylesheet);
+
+                        if let Some(mut layout_root) = build_layout_tree(&dom_tree, &styles, dom_tree.root) {
+                            let viewport_width = state.size.width as f32;
+                            layout_tree(&mut layout_root, viewport_width, &styles);
+                            
+                            let paint_commands = paint::build_display_list(&layout_root, &styles);
+                            if let Err(e) = state.render(&paint_commands, scroll_y) {
+                                eprintln!("WGPU Render error: {:?}", e);
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            _ => {}
+        }
+    }).unwrap();
 }
 
 fn print_layout_box(lb: &layout::LayoutBox, depth: usize) {
