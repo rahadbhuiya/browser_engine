@@ -24,14 +24,15 @@ use render::RenderState;
 
 
 pub fn fetch_and_render_page(url_str: &str) -> (dom::Dom, Vec<paint::PaintCommand>) {
-    let (html_content, _css_content) = if url_str.starts_with("http://") || url_str.starts_with("https://") {
-        match net::fetch(url_str) {
+    let resolved_url = net::format_url_or_search_query(url_str);
+    let (html_content, _css_content) = if resolved_url.starts_with("http://") || resolved_url.starts_with("https://") {
+        match net::fetch(&resolved_url) {
             Ok(resp) => (resp.body_as_string(), "".to_string()),
             Err(e) => (format!("<html><body><h1>Fetch Error</h1><p>{}</p></body></html>", e), "".to_string()),
         }
     } else {
         (
-            r#"<div class="page"><h1 class="title">Diaz's Secure Browser</h1><p>Type a URL and press Enter to load live pages!</p></div>"#.to_string(),
+            r#"<div class="page"><h1 class="title">Diaz's Secure Browser</h1><p>Type a search query or URL and press Enter to search!</p></div>"#.to_string(),
             r#".page { width: 400px; padding: 10px; } .title { color: #00f; }"#.to_string(),
         )
     };

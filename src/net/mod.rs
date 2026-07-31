@@ -4,14 +4,22 @@ pub mod url_parser;
 
 pub use fetch::fetch;
 pub use http::{HttpRequest, HttpResponse};
-pub use url_parser::{ParsedUrl, Scheme};
+pub use url_parser::{format_url_or_search_query, ParsedUrl, Scheme};
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
+    fn formats_search_queries_and_urls() {
+        assert_eq!(format_url_or_search_query("rust tutorial"), "https://www.google.com/search?q=rust+tutorial");
+        assert_eq!(format_url_or_search_query("example.com"), "https://example.com");
+        assert_eq!(format_url_or_search_query("http://example.com"), "http://example.com");
+    }
+
+    #[test]
     fn parses_valid_http_and_https_urls() {
+
         let http_url = ParsedUrl::parse("http://example.com/page").unwrap();
         assert_eq!(http_url.scheme, Scheme::Http);
         assert_eq!(http_url.host, "example.com");

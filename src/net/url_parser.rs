@@ -50,3 +50,25 @@ impl ParsedUrl {
         })
     }
 }
+
+pub fn format_url_or_search_query(input: &str) -> String {
+    let trimmed = input.trim();
+    if trimmed.is_empty() {
+        return "about:blank".to_string();
+    }
+
+    if trimmed.starts_with("http://") || trimmed.starts_with("https://") {
+        return trimmed.to_string();
+    }
+
+    let is_domain = !trimmed.contains(' ')
+        && (trimmed.contains('.') || trimmed.starts_with("localhost"));
+
+    if is_domain {
+        format!("https://{}", trimmed)
+    } else {
+        let encoded_query = trimmed.replace(' ', "+");
+        format!("https://www.google.com/search?q={}", encoded_query)
+    }
+}
+

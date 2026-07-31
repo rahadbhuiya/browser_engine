@@ -25,4 +25,9 @@ impl AddressBar {
     pub fn set_text(&mut self, text: &str) {
         self.url_text = text.to_string();
     }
+
+    pub fn resolve_query(&self) -> String {
+        crate::net::format_url_or_search_query(&self.url_text)
+    }
 }
+
