@@ -134,6 +134,8 @@ fn main() {
 
     let mut state = pollster::block_on(RenderState::new(window.clone()));
     let mut scroll_y: f32 = 0.0;
+    let mut address_bar = ui::AddressBar::new("https://google.com");
+    let mut page_body = r#"<div class="card"><h2 style="color: #004080;">Welcome to Diaz's Browser!</h2><p>Type any search term (e.g. <b>rust programming</b>) or domain name (e.g. <b>example.com</b>) above and press <b>ENTER</b> to search!</p></div>"#.to_string();
 
     event_loop.run(move |event, elwt| {
         match event {
@@ -150,13 +152,41 @@ fn main() {
                     }
                     WindowEvent::KeyboardInput { event: key_event, .. } => {
                         if key_event.state == winit::event::ElementState::Pressed {
-                            match key_event.logical_key {
+                            match &key_event.logical_key {
                                 Key::Named(NamedKey::ArrowDown) => {
-                                    scroll_y += 20.0;
+                                    scroll_y += 25.0;
                                     state.window.request_redraw();
                                 }
                                 Key::Named(NamedKey::ArrowUp) => {
-                                    scroll_y = (scroll_y - 20.0).max(0.0);
+                                    scroll_y = (scroll_y - 25.0).max(0.0);
+                                    state.window.request_redraw();
+                                }
+                                Key::Named(NamedKey::Backspace) => {
+                                    address_bar.backspace();
+                                    state.window.request_redraw();
+                                }
+                                Key::Named(NamedKey::Enter) => {
+                                    let target_url = address_bar.resolve_query();
+                                    println!("Fetching: {}", target_url);
+                                    match net::fetch(&target_url) {
+                                        Ok(resp) => {
+                                            page_body = format!("<div class='card'><h2>Results for: {}</h2><p>{}</p></div>", address_bar.url_text, resp.body_as_string());
+                                        }
+                                        Err(err) => {
+                                            page_body = format!("<div class='card'><h2 style='color: red;'>Fetch Error</h2><p>{}</p></div>", err);
+                                        }
+                                    }
+                                    scroll_y = 0.0;
+                                    state.window.request_redraw();
+                                }
+                                Key::Named(NamedKey::Space) => {
+                                    address_bar.insert_char(' ');
+                                    state.window.request_redraw();
+                                }
+                                Key::Character(ch_str) => {
+                                    for c in ch_str.chars() {
+                                        address_bar.insert_char(c);
+                                    }
                                     state.window.request_redraw();
                                 }
                                 _ => {}
@@ -164,31 +194,33 @@ fn main() {
                         }
                     }
                     WindowEvent::RedrawRequested => {
-                        // Re-run the full pipeline: DOM -> Style -> Layout -> Paint -> Render
-                        let html_doc = r#"
-                        <div class="page">
-                            <h1 class="title">Diaz's Secure Browser</h1>
-                            <p>Building a secure, custom browser rendering engine from scratch in Rust.</p>
-                            <p>This page is laid out using a custom Block Formatting Context engine and rendered on the GPU using WGPU!</p>
-                            <p style="color: blue;">Standard features like text color, font sizes, margins, padding, and borders are fully supported.</p>
-                            <br/>
-                            <div class="card" style="background-color: #e0f0ff; border-width: 2px; border-color: #004080; padding: 10px;">
-                                <p style="font-weight: bold; color: #004080;">GPU-Accelerated Compositing</p>
-                                <p>This colored card has custom borders, padding, background color, and margin. Use the ArrowUp and ArrowDown keys to scroll the page smoothly at 60 FPS.</p>
+                        let html_doc = format!(
+                            r#"
+                            <div class="page">
+                                <div class="navbar">
+                                    <p class="nav-title">SEARCH OR TYPE URL (Press Enter to Load):</p>
+                                    <p class="address-input">[ {} | ]</p>
+                                </div>
+                                <div class="content">
+                                    {}
+                                </div>
                             </div>
-                            <br/>
-                            <p style="color: #666; font-size: 14px;">Batch 4 (Compositing + Rasterization) complete.</p>
-                        </div>
-                        "#;
+                            "#,
+                            address_bar.url_text,
+                            page_body
+                        );
 
                         let css_doc = r#"
-                            .page { width: 600px; padding: 20px; background-color: #ffffff; }
-                            .title { color: #111; font-size: 32px; margin-bottom: 12px; }
-                            p { color: #333; font-size: 16px; margin: 8px 0; }
-                            .card { margin: 15px 0; }
+                            .page { width: 760px; padding: 15px; background-color: #ffffff; }
+                            .navbar { background-color: #f0f4f8; padding: 10px; border-width: 2px; border-color: #0066cc; margin-bottom: 15px; }
+                            .nav-title { color: #004080; font-weight: bold; margin: 0; font-size: 14px; }
+                            .address-input { background-color: #ffffff; color: #0066cc; font-weight: bold; padding: 6px; margin: 6px 0 0 0; border-width: 1px; border-color: #0066cc; }
+                            .card { padding: 10px; background-color: #f9f9f9; border-width: 1px; border-color: #ddd; }
+                            p { color: #333; font-size: 15px; margin: 6px 0; }
+                            h2 { color: #111; margin: 4px 0; }
                         "#;
 
-                        let dom_tree = build_dom(Tokenizer::new(html_doc).tokenize());
+                        let dom_tree = build_dom(Tokenizer::new(&html_doc).tokenize());
                         let stylesheet = CssParser::new(CssTokenizer::new(css_doc).tokenize()).parse();
                         let styles = compute_styles(&dom_tree, &stylesheet);
 
@@ -198,7 +230,7 @@ fn main() {
                             
                             let paint_commands = paint::build_display_list(&layout_root, &styles);
                             if let Err(e) = state.render(&paint_commands, scroll_y) {
-                                eprintln!("WGPU Render error: {:?}", e);
+                                eprintln!("Render error: {:?}", e);
                             }
                         }
                     }
