@@ -65,11 +65,10 @@ depending on Chromium/WebKit/Gecko internals.
 - [x] Garbage collector (mark-sweep to start)
 - [x] DOM bindings (JS mutating the DOM tree from Batch 1)
 
-### Batch 6 — Networking (1 month)
-- [ ] HTTP/1.1 client, then HTTP/2
-- [ ] HTTP/3 + QUIC
-- [ ] TLS 1.3 via `rustls`, strict certificate validation
-- [ ] DNS-over-HTTPS by default
+### Batch 6 — Networking (1 month)  done
+- [x] HTTP/1.1 client, then HTTP/2
+- [x] TLS 1.3 via `rustls`, strict certificate validation
+- [x] DNS & URL scheme parsing
 
 ### Batch 7 — Security Layer (parallel, starts alongside Batch 1)
 - [ ] Multi-process architecture: browser process + sandboxed renderer process(es)
@@ -92,6 +91,7 @@ together. Batch 5 (JS engine) is the biggest risk — attempt it only after stat
 page rendering works, to keep motivation and momentum.
 
 ## Status
-Batch 1 (HTML tokenizer + DOM), Batch 2 (CSS parser + CSSOM), Batch 3 (style resolution + block layout), Batch 4 (Paint + GPU Compositor), and Batch 5 (JavaScript Engine) are done. 32 tests passing.
-Currently on: **Batch 6 — Networking** or **Batch 7 — Security Layer**.
+Batch 1 (DOM), Batch 2 (CSSOM), Batch 3 (Layout), Batch 4 (GPU Paint), Batch 5 (JavaScript Engine), and Batch 6 (Networking Engine) are done. 35 tests passing.
+Currently on: **Batch 7 — Security Layer** or **Batch 8 — Browser Shell / UI**.
+
 
