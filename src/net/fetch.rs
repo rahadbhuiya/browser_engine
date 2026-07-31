@@ -42,7 +42,11 @@ pub fn fetch(url_str: &str) -> Result<HttpResponse, String> {
             let mut tls_stream = StreamOwned::new(conn, tcp_stream);
             tls_stream.write_all(&request_bytes).map_err(|e| format!("TLS Write failed: {}", e))?;
             let mut buf = Vec::new();
-            tls_stream.read_to_end(&mut buf).map_err(|e| format!("TLS Read failed: {}", e))?;
+            if let Err(e) = tls_stream.read_to_end(&mut buf) {
+                if e.kind() != std::io::ErrorKind::UnexpectedEof || buf.is_empty() {
+                    return Err(format!("TLS Read failed: {}", e));
+                }
+            }
             buf
         }
     };

@@ -65,7 +65,11 @@ pub fn format_url_or_search_query(input: &str) -> String {
         && (trimmed.contains('.') || trimmed.starts_with("localhost"));
 
     if is_domain {
-        format!("https://{}", trimmed)
+        if trimmed == "google.com" {
+            "https://www.google.com".to_string()
+        } else {
+            format!("https://{}", trimmed)
+        }
     } else {
         let encoded_query = trimmed.replace(' ', "+");
         format!("https://www.google.com/search?q={}", encoded_query)
