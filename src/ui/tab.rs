@@ -1,3 +1,5 @@
+use super::navbar::NavBarHistory;
+
 #[derive(Debug, Clone)]
 pub struct Tab {
     pub id: usize,
@@ -5,10 +7,13 @@ pub struct Tab {
     pub url: String,
     pub page_body: String,
     pub scroll_y: f32,
+    pub history: NavBarHistory,
 }
 
 impl Tab {
     pub fn new(id: usize, title: &str, url: &str) -> Self {
+        let mut history = NavBarHistory::default();
+        history.navigate_to(url);
         Tab {
             id,
             title: title.to_string(),
@@ -18,7 +23,16 @@ impl Tab {
                 id
             ),
             scroll_y: 0.0,
+            history,
         }
+    }
+
+    pub fn navigate_to(&mut self, title: &str, url: &str, body: &str) {
+        self.title = title.to_string();
+        self.url = url.to_string();
+        self.page_body = body.to_string();
+        self.scroll_y = 0.0;
+        self.history.navigate_to(url);
     }
 }
 
@@ -83,7 +97,7 @@ impl TabManager {
                 bg_color, text_color, border, i + 1, tab.title
             ));
         }
-        html.push_str(r#"<span style="color: #666; font-size: 12px; margin-left: 8px;">(Ctrl+T: New Tab | Ctrl+W: Close | Alt+1/2: Switch)</span></div>"#);
+        html.push_str(r#"<span style="color: #666; font-size: 12px; margin-left: 8px;">(Ctrl+T: New Tab | Ctrl+W: Close | Alt+1/2: Switch | Alt+Left: Back | Alt+Right: Forward)</span></div>"#);
         html
     }
 }

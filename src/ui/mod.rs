@@ -53,5 +53,14 @@ mod tests {
         assert!(html.contains("Google"));
         assert!(html.contains("Rust Documentation"));
     }
+
+    #[test]
+    fn test_per_tab_history() {
+        let mut tab = Tab::new(1, "Google", "https://google.com");
+        tab.navigate_to("Example", "https://example.com", "body");
+        assert!(tab.history.can_go_back());
+        assert_eq!(tab.history.go_back(), Some("https://google.com".to_string()));
+    }
 }
+
 

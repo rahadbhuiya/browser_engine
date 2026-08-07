@@ -165,24 +165,45 @@ fn main() {
                                     address_bar.backspace();
                                     state.window.request_redraw();
                                 }
+                                Key::Named(NamedKey::ArrowLeft) => {
+                                    if let Some(prev_url) = tab_manager.active_tab_mut().history.go_back() {
+                                        println!("Going back to: {}", prev_url);
+                                        address_bar.set_text(&prev_url);
+                                        if let Ok(resp) = net::fetch(&prev_url) {
+                                            let active_tab = tab_manager.active_tab_mut();
+                                            active_tab.title = prev_url.clone();
+                                            active_tab.url = prev_url.clone();
+                                            active_tab.page_body = format!("<div class='card'><h2>{}</h2><p>{}</p></div>", prev_url, resp.body_as_string());
+                                        }
+                                        state.window.request_redraw();
+                                    }
+                                }
+                                Key::Named(NamedKey::ArrowRight) => {
+                                    if let Some(next_url) = tab_manager.active_tab_mut().history.go_forward() {
+                                        println!("Going forward to: {}", next_url);
+                                        address_bar.set_text(&next_url);
+                                        if let Ok(resp) = net::fetch(&next_url) {
+                                            let active_tab = tab_manager.active_tab_mut();
+                                            active_tab.title = next_url.clone();
+                                            active_tab.url = next_url.clone();
+                                            active_tab.page_body = format!("<div class='card'><h2>{}</h2><p>{}</p></div>", next_url, resp.body_as_string());
+                                        }
+                                        state.window.request_redraw();
+                                    }
+                                }
                                 Key::Named(NamedKey::Enter) => {
                                     let target_url = address_bar.resolve_query();
                                     println!("Fetching: {}", target_url);
                                     let active_title = address_bar.url_text.clone();
-                                    match net::fetch(&target_url) {
+                                    let body = match net::fetch(&target_url) {
                                         Ok(resp) => {
-                                            let active_tab = tab_manager.active_tab_mut();
-                                            active_tab.title = active_title.clone();
-                                            active_tab.url = target_url.clone();
-                                            active_tab.page_body = format!("<div class='card'><h2>Results for: {}</h2><p>{}</p></div>", active_title, resp.body_as_string());
+                                            format!("<div class='card'><h2>Results for: {}</h2><p>{}</p></div>", active_title, resp.body_as_string())
                                         }
                                         Err(err) => {
-                                            let active_tab = tab_manager.active_tab_mut();
-                                            active_tab.title = "Error".to_string();
-                                            active_tab.page_body = format!("<div class='card'><h2 style='color: red;'>Fetch Error</h2><p>{}</p></div>", err);
+                                            format!("<div class='card'><h2 style='color: red;'>Fetch Error</h2><p>{}</p></div>", err)
                                         }
-                                    }
-                                    tab_manager.active_tab_mut().scroll_y = 0.0;
+                                    };
+                                    tab_manager.active_tab_mut().navigate_to(&active_title, &target_url, &body);
                                     state.window.request_redraw();
                                 }
                                 Key::Named(NamedKey::Space) => {
