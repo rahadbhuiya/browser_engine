@@ -206,45 +206,19 @@ fn main() {
                                     tab_manager.active_tab_mut().navigate_to(&active_title, &target_url, &body);
                                     state.window.request_redraw();
                                 }
+                                Key::Named(NamedKey::Escape) => {
+                                    address_bar.set_text("");
+                                    state.window.request_redraw();
+                                }
                                 Key::Named(NamedKey::Space) => {
                                     address_bar.insert_char(' ');
                                     state.window.request_redraw();
                                 }
                                 Key::Character(ch_str) => {
-                                    match ch_str.as_str() {
-                                        "t" | "T" => {
-                                            tab_manager.new_tab("", "https://google.com");
-                                            address_bar.set_text("https://google.com");
-                                            state.window.request_redraw();
-                                        }
-                                        "w" | "W" => {
-                                            let curr = tab_manager.active_index;
-                                            tab_manager.close_tab(curr);
-                                            address_bar.set_text(&tab_manager.active_tab().url);
-                                            state.window.request_redraw();
-                                        }
-                                        "1" => {
-                                            tab_manager.switch_tab(0);
-                                            address_bar.set_text(&tab_manager.active_tab().url);
-                                            state.window.request_redraw();
-                                        }
-                                        "2" => {
-                                            tab_manager.switch_tab(1);
-                                            address_bar.set_text(&tab_manager.active_tab().url);
-                                            state.window.request_redraw();
-                                        }
-                                        "3" => {
-                                            tab_manager.switch_tab(2);
-                                            address_bar.set_text(&tab_manager.active_tab().url);
-                                            state.window.request_redraw();
-                                        }
-                                        ch => {
-                                            for c in ch.chars() {
-                                                address_bar.insert_char(c);
-                                            }
-                                            state.window.request_redraw();
-                                        }
+                                    for c in ch_str.chars() {
+                                        address_bar.insert_char(c);
                                     }
+                                    state.window.request_redraw();
                                 }
                                 _ => {}
                             }
