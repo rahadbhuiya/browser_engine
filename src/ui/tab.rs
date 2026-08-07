@@ -3,6 +3,7 @@ pub struct Tab {
     pub id: usize,
     pub title: String,
     pub url: String,
+    pub page_body: String,
     pub scroll_y: f32,
 }
 
@@ -12,6 +13,10 @@ impl Tab {
             id,
             title: title.to_string(),
             url: url.to_string(),
+            page_body: format!(
+                r#"<div class="card"><h2 style="color: #004080;">Welcome to Tab {}</h2><p>Type a search query or URL above and press <b>ENTER</b> to load!</p></div>"#,
+                id
+            ),
             scroll_y: 0.0,
         }
     }
@@ -25,7 +30,7 @@ pub struct TabManager {
 
 impl TabManager {
     pub fn new() -> Self {
-        let default_tab = Tab::new(1, "New Tab", "about:blank");
+        let default_tab = Tab::new(1, "Google", "https://google.com");
         TabManager {
             tabs: vec![default_tab],
             active_index: 0,
@@ -36,7 +41,8 @@ impl TabManager {
     pub fn new_tab(&mut self, title: &str, url: &str) -> usize {
         let id = self.next_id;
         self.next_id += 1;
-        self.tabs.push(Tab::new(id, title, url));
+        let tab_title = if title.is_empty() { format!("Tab {}", id) } else { title.to_string() };
+        self.tabs.push(Tab::new(id, &tab_title, url));
         self.active_index = self.tabs.len() - 1;
         id
     }
@@ -62,5 +68,22 @@ impl TabManager {
         if index < self.tabs.len() {
             self.active_index = index;
         }
+    }
+
+    pub fn render_tab_strip_html(&self) -> String {
+        let mut html = String::from(r#"<div class="tab-strip" style="background-color: #d0e0f0; padding: 4px; border-bottom: 1px solid #0066cc;">"#);
+        for (i, tab) in self.tabs.iter().enumerate() {
+            let is_active = i == self.active_index;
+            let bg_color = if is_active { "#ffffff" } else { "#e0ebf5" };
+            let text_color = if is_active { "#004080" } else { "#555555" };
+            let border = if is_active { "2px solid #0066cc" } else { "1px solid #aabccf" };
+            
+            html.push_str(&format!(
+                r#"<span style="background-color: {}; color: {}; border: {}; padding: 4px 10px; margin-right: 4px; font-weight: bold; font-size: 13px;">[{}] {}</span>"#,
+                bg_color, text_color, border, i + 1, tab.title
+            ));
+        }
+        html.push_str(r#"<span style="color: #666; font-size: 12px; margin-left: 8px;">(Ctrl+T: New Tab | Ctrl+W: Close | Alt+1/2: Switch)</span></div>"#);
+        html
     }
 }

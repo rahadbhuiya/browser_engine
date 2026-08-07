@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 pub mod fetch;
 pub mod http;
 pub mod url_parser;

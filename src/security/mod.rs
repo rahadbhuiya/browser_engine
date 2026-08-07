@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 pub mod csp;
 pub mod ipc;
 pub mod sop;

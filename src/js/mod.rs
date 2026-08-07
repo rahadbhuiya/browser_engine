@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 pub mod ast;
 pub mod bytecode;
 pub mod dom_bindings;

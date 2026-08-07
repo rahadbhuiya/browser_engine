@@ -133,9 +133,8 @@ fn main() {
     );
 
     let mut state = pollster::block_on(RenderState::new(window.clone()));
-    let mut scroll_y: f32 = 0.0;
     let mut address_bar = ui::AddressBar::new("https://google.com");
-    let mut page_body = r#"<div class="card"><h2 style="color: #004080;">Welcome to Diaz's Browser!</h2><p>Type any search term (e.g. <b>rust programming</b>) or domain name (e.g. <b>example.com</b>) above and press <b>ENTER</b> to search!</p></div>"#.to_string();
+    let mut tab_manager = ui::TabManager::new();
 
     event_loop.run(move |event, elwt| {
         match event {
@@ -154,11 +153,12 @@ fn main() {
                         if key_event.state == winit::event::ElementState::Pressed {
                             match &key_event.logical_key {
                                 Key::Named(NamedKey::ArrowDown) => {
-                                    scroll_y += 25.0;
+                                    tab_manager.active_tab_mut().scroll_y += 25.0;
                                     state.window.request_redraw();
                                 }
                                 Key::Named(NamedKey::ArrowUp) => {
-                                    scroll_y = (scroll_y - 25.0).max(0.0);
+                                    let active = tab_manager.active_tab_mut();
+                                    active.scroll_y = (active.scroll_y - 25.0).max(0.0);
                                     state.window.request_redraw();
                                 }
                                 Key::Named(NamedKey::Backspace) => {
@@ -168,15 +168,21 @@ fn main() {
                                 Key::Named(NamedKey::Enter) => {
                                     let target_url = address_bar.resolve_query();
                                     println!("Fetching: {}", target_url);
+                                    let active_title = address_bar.url_text.clone();
                                     match net::fetch(&target_url) {
                                         Ok(resp) => {
-                                            page_body = format!("<div class='card'><h2>Results for: {}</h2><p>{}</p></div>", address_bar.url_text, resp.body_as_string());
+                                            let active_tab = tab_manager.active_tab_mut();
+                                            active_tab.title = active_title.clone();
+                                            active_tab.url = target_url.clone();
+                                            active_tab.page_body = format!("<div class='card'><h2>Results for: {}</h2><p>{}</p></div>", active_title, resp.body_as_string());
                                         }
                                         Err(err) => {
-                                            page_body = format!("<div class='card'><h2 style='color: red;'>Fetch Error</h2><p>{}</p></div>", err);
+                                            let active_tab = tab_manager.active_tab_mut();
+                                            active_tab.title = "Error".to_string();
+                                            active_tab.page_body = format!("<div class='card'><h2 style='color: red;'>Fetch Error</h2><p>{}</p></div>", err);
                                         }
                                     }
-                                    scroll_y = 0.0;
+                                    tab_manager.active_tab_mut().scroll_y = 0.0;
                                     state.window.request_redraw();
                                 }
                                 Key::Named(NamedKey::Space) => {
@@ -184,19 +190,53 @@ fn main() {
                                     state.window.request_redraw();
                                 }
                                 Key::Character(ch_str) => {
-                                    for c in ch_str.chars() {
-                                        address_bar.insert_char(c);
+                                    match ch_str.as_str() {
+                                        "t" | "T" => {
+                                            tab_manager.new_tab("", "https://google.com");
+                                            address_bar.set_text("https://google.com");
+                                            state.window.request_redraw();
+                                        }
+                                        "w" | "W" => {
+                                            let curr = tab_manager.active_index;
+                                            tab_manager.close_tab(curr);
+                                            address_bar.set_text(&tab_manager.active_tab().url);
+                                            state.window.request_redraw();
+                                        }
+                                        "1" => {
+                                            tab_manager.switch_tab(0);
+                                            address_bar.set_text(&tab_manager.active_tab().url);
+                                            state.window.request_redraw();
+                                        }
+                                        "2" => {
+                                            tab_manager.switch_tab(1);
+                                            address_bar.set_text(&tab_manager.active_tab().url);
+                                            state.window.request_redraw();
+                                        }
+                                        "3" => {
+                                            tab_manager.switch_tab(2);
+                                            address_bar.set_text(&tab_manager.active_tab().url);
+                                            state.window.request_redraw();
+                                        }
+                                        ch => {
+                                            for c in ch.chars() {
+                                                address_bar.insert_char(c);
+                                            }
+                                            state.window.request_redraw();
+                                        }
                                     }
-                                    state.window.request_redraw();
                                 }
                                 _ => {}
                             }
                         }
                     }
                     WindowEvent::RedrawRequested => {
+                        let tab_strip = tab_manager.render_tab_strip_html();
+                        let active_tab = tab_manager.active_tab();
+
                         let html_doc = format!(
                             r#"
                             <div class="page">
+                                {}
                                 <div class="navbar">
                                     <p class="nav-title">SEARCH OR TYPE URL (Press Enter to Load):</p>
                                     <p class="address-input">[ {} | ]</p>
@@ -206,15 +246,16 @@ fn main() {
                                 </div>
                             </div>
                             "#,
+                            tab_strip,
                             address_bar.url_text,
-                            page_body
+                            active_tab.page_body
                         );
 
                         let css_doc = r#"
-                            .page { width: 760px; padding: 15px; background-color: #ffffff; }
-                            .navbar { background-color: #f0f4f8; padding: 10px; border-width: 2px; border-color: #0066cc; margin-bottom: 15px; }
-                            .nav-title { color: #004080; font-weight: bold; margin: 0; font-size: 14px; }
-                            .address-input { background-color: #ffffff; color: #0066cc; font-weight: bold; padding: 6px; margin: 6px 0 0 0; border-width: 1px; border-color: #0066cc; }
+                            .page { width: 760px; padding: 10px; background-color: #ffffff; }
+                            .navbar { background-color: #f0f4f8; padding: 8px; border-width: 2px; border-color: #0066cc; margin-bottom: 10px; }
+                            .nav-title { color: #004080; font-weight: bold; margin: 0; font-size: 13px; }
+                            .address-input { background-color: #ffffff; color: #0066cc; font-weight: bold; padding: 6px; margin: 4px 0 0 0; border-width: 1px; border-color: #0066cc; }
                             .card { padding: 10px; background-color: #f9f9f9; border-width: 1px; border-color: #ddd; }
                             p { color: #333; font-size: 15px; margin: 6px 0; }
                             h2 { color: #111; margin: 4px 0; }
@@ -229,7 +270,7 @@ fn main() {
                             layout_tree(&mut layout_root, viewport_width, &styles);
                             
                             let paint_commands = paint::build_display_list(&layout_root, &styles);
-                            if let Err(e) = state.render(&paint_commands, scroll_y) {
+                            if let Err(e) = state.render(&paint_commands, active_tab.scroll_y) {
                                 eprintln!("Render error: {:?}", e);
                             }
                         }

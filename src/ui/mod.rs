@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 pub mod address_bar;
 pub mod navbar;
 pub mod tab;
@@ -42,4 +44,14 @@ mod tests {
         assert!(history.can_go_forward());
         assert_eq!(history.go_forward(), Some("http://example.com/page2".to_string()));
     }
+
+    #[test]
+    fn test_tab_strip_rendering() {
+        let mut mgr = TabManager::new();
+        mgr.new_tab("Rust Documentation", "https://doc.rust-lang.org");
+        let html = mgr.render_tab_strip_html();
+        assert!(html.contains("Google"));
+        assert!(html.contains("Rust Documentation"));
+    }
 }
+
