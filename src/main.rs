@@ -251,13 +251,13 @@ fn main() {
                         );
 
                         let css_doc = r#"
-                            .page { width: 760px; padding: 10px; background-color: #ffffff; }
-                            .navbar { background-color: #f0f4f8; padding: 8px; border-width: 2px; border-color: #0066cc; margin-bottom: 10px; }
-                            .nav-title { color: #004080; font-weight: bold; margin: 0; font-size: 13px; }
-                            .address-input { background-color: #ffffff; color: #0066cc; font-weight: bold; padding: 6px; margin: 4px 0 0 0; border-width: 1px; border-color: #0066cc; }
-                            .card { padding: 10px; background-color: #f9f9f9; border-width: 1px; border-color: #ddd; }
-                            p { color: #333; font-size: 15px; margin: 6px 0; }
-                            h2 { color: #111; margin: 4px 0; }
+                            .page { width: 780px; padding: 12px; background-color: #0f172a; }
+                            .navbar { background-color: #1e293b; padding: 10px; border-width: 2px; border-color: #6366f1; margin-bottom: 8px; }
+                            .nav-title { color: #818cf8; font-weight: bold; margin: 0; font-size: 13px; }
+                            .address-input { background-color: #0f172a; color: #38bdf8; font-weight: bold; padding: 8px; margin: 4px 0 0 0; border-width: 2px; border-color: #38bdf8; }
+                            .card { padding: 16px; background-color: #1e293b; border-width: 1px; border-color: #334155; margin-top: 8px; }
+                            p { color: #cbd5e1; font-size: 15px; margin: 6px 0; }
+                            h2 { color: #f8fafc; margin: 4px 0; }
                         "#;
 
                         let dom_tree = build_dom(Tokenizer::new(&html_doc).tokenize());

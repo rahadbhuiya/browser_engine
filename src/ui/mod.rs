@@ -52,7 +52,7 @@ mod tests {
         let mut mgr = TabManager::new();
         mgr.new_tab("Rust Documentation", "https://doc.rust-lang.org");
         let html = mgr.render_tab_strip_html();
-        assert!(html.contains("Google"));
+        assert!(html.contains("New Tab"));
         assert!(html.contains("Rust Documentation"));
     }
 

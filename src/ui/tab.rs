@@ -19,8 +19,18 @@ impl Tab {
             title: title.to_string(),
             url: url.to_string(),
             page_body: format!(
-                r#"<div class="card"><h2 style="color: #004080;">Welcome to Tab {}</h2><p>Type a search query or URL above and press <b>ENTER</b> to load!</p></div>"#,
-                id
+                r#"
+                <div class="card" style="background-color: #1e293b; padding: 20px; border-width: 2px; border-color: #6366f1;">
+                    <h2 style="color: #818cf8; font-size: 24px;">Welcome to Diaz's Browser Engine</h2>
+                    <p style="color: #94a3b8;">GPU-Accelerated • 60 FPS Compositing • Native Rust JS Engine & TLS 1.3</p>
+                    <br/>
+                    <div style="background-color: #0f172a; padding: 12px; border-width: 1px; border-color: #38bdf8; margin-bottom: 12px;">
+                        <p style="color: #38bdf8; font-weight: bold;">🔍 SEARCH OMNIBOX ACTIVE</p>
+                        <p style="color: #cbd5e1;">Type any keywords (e.g. <b>rust tutorial</b>) or website (e.g. <b>example.com</b>) in the top address bar and press ENTER!</p>
+                    </div>
+                    <p style="color: #64748b; font-size: 13px;">QUICK SHORTCUTS: ★ Google • ★ ChatGPT • ★ GitHub • ★ YouTube • ★ Rust Docs</p>
+                </div>
+                "#
             ),
             scroll_y: 0.0,
             history,
@@ -44,7 +54,7 @@ pub struct TabManager {
 
 impl TabManager {
     pub fn new() -> Self {
-        let default_tab = Tab::new(1, "Google", "https://google.com");
+        let default_tab = Tab::new(1, "New Tab", "https://google.com");
         TabManager {
             tabs: vec![default_tab],
             active_index: 0,
@@ -85,19 +95,19 @@ impl TabManager {
     }
 
     pub fn render_tab_strip_html(&self) -> String {
-        let mut html = String::from(r#"<div class="tab-strip" style="background-color: #d0e0f0; padding: 4px; border-bottom: 1px solid #0066cc;">"#);
+        let mut html = String::from(r#"<div class="tab-strip" style="background-color: #0f172a; padding: 6px; border-bottom: 2px solid #334155;">"#);
         for (i, tab) in self.tabs.iter().enumerate() {
             let is_active = i == self.active_index;
-            let bg_color = if is_active { "#ffffff" } else { "#e0ebf5" };
-            let text_color = if is_active { "#004080" } else { "#555555" };
-            let border = if is_active { "2px solid #0066cc" } else { "1px solid #aabccf" };
+            let bg_color = if is_active { "#1e293b" } else { "#0f172a" };
+            let text_color = if is_active { "#38bdf8" } else { "#64748b" };
+            let border = if is_active { "2px solid #6366f1" } else { "1px solid #334155" };
             
             html.push_str(&format!(
-                r#"<span style="background-color: {}; color: {}; border: {}; padding: 4px 10px; margin-right: 4px; font-weight: bold; font-size: 13px;">[{}] {}</span>"#,
+                r#"<span style="background-color: {}; color: {}; border: {}; padding: 6px 14px; margin-right: 6px; font-weight: bold; font-size: 13px;">[{}] {}</span>"#,
                 bg_color, text_color, border, i + 1, tab.title
             ));
         }
-        html.push_str(r#"<span style="color: #666; font-size: 12px; margin-left: 8px;">(Ctrl+T: New Tab | Ctrl+W: Close | Alt+1/2: Switch | Alt+Left: Back | Alt+Right: Forward)</span></div>"#);
+        html.push_str(r#"<span style="color: #64748b; font-size: 12px; margin-left: 10px;">(ESC: Clear | Left/Right: Back/Forward)</span></div>"#);
         html
     }
 }
