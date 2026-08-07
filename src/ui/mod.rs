@@ -1,10 +1,12 @@
 #![allow(dead_code)]
 
 pub mod address_bar;
+pub mod bookmarks;
 pub mod navbar;
 pub mod tab;
 
 pub use address_bar::AddressBar;
+pub use bookmarks::{Bookmark, BookmarkManager};
 pub use navbar::NavBarHistory;
 pub use tab::{Tab, TabManager};
 
@@ -61,6 +63,17 @@ mod tests {
         assert!(tab.history.can_go_back());
         assert_eq!(tab.history.go_back(), Some("https://google.com".to_string()));
     }
+
+    #[test]
+    fn test_bookmark_manager() {
+        let mut b_mgr = BookmarkManager::new();
+        assert_eq!(b_mgr.items.len(), 3);
+        b_mgr.add("StackOverflow", "https://stackoverflow.com");
+        assert_eq!(b_mgr.items.len(), 4);
+        let html = b_mgr.render_bookmarks_bar_html();
+        assert!(html.contains("StackOverflow"));
+    }
 }
+
 
 

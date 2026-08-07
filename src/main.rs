@@ -135,6 +135,7 @@ fn main() {
     let mut state = pollster::block_on(RenderState::new(window.clone()));
     let mut address_bar = ui::AddressBar::new("https://google.com");
     let mut tab_manager = ui::TabManager::new();
+    let bookmark_manager = ui::BookmarkManager::new();
 
     event_loop.run(move |event, elwt| {
         match event {
@@ -226,6 +227,7 @@ fn main() {
                     }
                     WindowEvent::RedrawRequested => {
                         let tab_strip = tab_manager.render_tab_strip_html();
+                        let bookmarks_bar = bookmark_manager.render_bookmarks_bar_html();
                         let active_tab = tab_manager.active_tab();
 
                         let html_doc = format!(
@@ -233,9 +235,10 @@ fn main() {
                             <div class="page">
                                 {}
                                 <div class="navbar">
-                                    <p class="nav-title">SEARCH OR TYPE URL (Press Enter to Load):</p>
+                                    <p class="nav-title">SEARCH OR TYPE URL (Press Enter to Load | ESC to Clear):</p>
                                     <p class="address-input">[ {} | ]</p>
                                 </div>
+                                {}
                                 <div class="content">
                                     {}
                                 </div>
@@ -243,6 +246,7 @@ fn main() {
                             "#,
                             tab_strip,
                             address_bar.url_text,
+                            bookmarks_bar,
                             active_tab.page_body
                         );
 
