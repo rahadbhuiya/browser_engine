@@ -47,6 +47,15 @@ impl Tab {
         self.scroll_y = 0.0;
         self.history.navigate_to(url);
     }
+
+    pub fn find_in_page(&self, query: &str) -> usize {
+        if query.trim().is_empty() {
+            return 0;
+        }
+        let q = query.to_ascii_lowercase();
+        let body = self.page_body.to_ascii_lowercase();
+        body.matches(&q).count()
+    }
 }
 
 pub struct TabManager {

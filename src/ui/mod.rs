@@ -93,6 +93,13 @@ mod tests {
         assert!(dump.contains("<h1 >"));
         assert!(dump.contains("Test Page"));
     }
+
+    #[test]
+    fn test_find_in_page_matching() {
+        let tab = Tab::new(1, "Test", "https://example.com");
+        let matches = tab.find_in_page("Engine");
+        assert!(matches >= 1);
+    }
 }
 
 
