@@ -136,6 +136,7 @@ fn main() {
     let mut address_bar = ui::AddressBar::new("https://google.com");
     let mut tab_manager = ui::TabManager::new();
     let bookmark_manager = ui::BookmarkManager::new();
+    let download_manager = net::DownloadManager::new();
     let mut mouse_pos = (0.0f32, 0.0f32);
 
     event_loop.run(move |event, elwt| {
@@ -259,6 +260,7 @@ fn main() {
                     WindowEvent::RedrawRequested => {
                         let tab_strip = tab_manager.render_tab_strip_html();
                         let bookmarks_bar = bookmark_manager.render_bookmarks_bar_html();
+                        let downloads_bar = download_manager.render_downloads_bar_html();
                         let active_tab = tab_manager.active_tab();
 
                         let html_doc = format!(
@@ -273,12 +275,14 @@ fn main() {
                                 <div class="content">
                                     {}
                                 </div>
+                                {}
                             </div>
                             "#,
                             tab_strip,
                             address_bar.url_text,
                             bookmarks_bar,
-                            active_tab.page_body
+                            active_tab.page_body,
+                            downloads_bar
                         );
 
                         let css_doc = r#"

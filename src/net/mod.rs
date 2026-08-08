@@ -1,9 +1,11 @@
 #![allow(dead_code)]
 
+pub mod downloader;
 pub mod fetch;
 pub mod http;
 pub mod url_parser;
 
+pub use downloader::{DownloadItem, DownloadManager};
 pub use fetch::fetch;
 pub use http::{HttpRequest, HttpResponse};
 pub use url_parser::{format_url_or_search_query, ParsedUrl, Scheme};
@@ -51,5 +53,19 @@ mod tests {
         assert_eq!(resp.status_text, "OK");
         assert_eq!(resp.headers.get("content-type"), Some(&"text/html".to_string()));
         assert_eq!(resp.body_as_string(), "Hello World!!");
+    }
+
+    #[test]
+    fn test_download_manager() {
+        let mut dm = DownloadManager::new();
+        dm.downloads.push(DownloadItem {
+            url: "https://example.com/file.zip".to_string(),
+            filename: "file.zip".to_string(),
+            bytes_downloaded: 1024,
+            completed: true,
+        });
+        let html = dm.render_downloads_bar_html();
+        assert!(html.contains("file.zip"));
+        assert!(html.contains("1024 B"));
     }
 }
