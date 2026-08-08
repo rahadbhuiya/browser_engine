@@ -22,13 +22,16 @@ impl Tab {
                 r#"
                 <div class="card" style="background-color: #1e293b; padding: 20px; border-width: 2px; border-color: #6366f1;">
                     <h2 style="color: #818cf8; font-size: 24px;">Welcome to Diaz's Browser Engine</h2>
-                    <p style="color: #94a3b8;">GPU-Accelerated • 60 FPS Compositing • Native Rust JS Engine & TLS 1.3</p>
+                    <p style="color: #94a3b8;">GPU-Accelerated • Native Rust HTML5/CSS3 Engine • Clickable Form Controls</p>
                     <br/>
-                    <div style="background-color: #0f172a; padding: 12px; border-width: 1px; border-color: #38bdf8; margin-bottom: 12px;">
-                        <p style="color: #38bdf8; font-weight: bold;">🔍 SEARCH OMNIBOX ACTIVE</p>
-                        <p style="color: #cbd5e1;">Type any keywords (e.g. <b>rust tutorial</b>) or website (e.g. <b>example.com</b>) in the top address bar and press ENTER!</p>
+                    <div style="background-color: #0f172a; padding: 14px; border-width: 1px; border-color: #38bdf8; margin-bottom: 12px;">
+                        <p style="color: #38bdf8; font-weight: bold;">🔍 INTERACTIVE FORM & SEARCH HUB</p>
+                        <p style="color: #cbd5e1;">Type any keywords or web address in the top Omnibox or click quick links below!</p>
                     </div>
-                    <p style="color: #64748b; font-size: 13px;">QUICK SHORTCUTS: ★ Google • ★ ChatGPT • ★ GitHub • ★ YouTube • ★ Rust Docs</p>
+                    <div style="background-color: #0f172a; padding: 10px; border-width: 1px; border-color: #6366f1;">
+                        <p style="color: #818cf8; font-weight: bold;">★ QUICK LINKS & ACTIONS:</p>
+                        <p style="color: #38bdf8; font-weight: bold;">[ Google Search ]  [ Rust Documentation ]  [ GitHub Repo ]</p>
+                    </div>
                 </div>
                 "#
             ),
