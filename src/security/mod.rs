@@ -3,10 +3,12 @@
 pub mod csp;
 pub mod ipc;
 pub mod sop;
+pub mod storage;
 
 pub use csp::CspPolicy;
 pub use ipc::{IpcChannel, IpcMessage};
 pub use sop::Origin;
+pub use storage::{Cookie, StorageManager};
 
 #[cfg(test)]
 mod tests {
@@ -38,5 +40,15 @@ mod tests {
         assert!(policy.allows_script("https://example.com/app.js"));
         assert!(policy.allows_script("https://trusted.com/library.js"));
         assert!(!policy.allows_script("http://untrusted-site.com/malicious.js"));
+    }
+
+    #[test]
+    fn test_storage_manager() {
+        let mut sm = StorageManager::new();
+        sm.set_item("example.com", "theme", "dark");
+        assert_eq!(sm.get_item("example.com", "theme"), Some(&"dark".to_string()));
+
+        sm.set_cookie("example.com", "session_id", "xyz123");
+        assert_eq!(sm.get_cookies("example.com"), "session_id=xyz123");
     }
 }
