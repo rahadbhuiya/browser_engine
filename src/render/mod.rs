@@ -308,6 +308,20 @@ impl RenderState {
                         *font_size,
                     ));
                 }
+                PaintCommand::DrawImage { rect, alt, .. } => {
+                    instances.push(InstanceRaw {
+                        position: [rect.x, rect.y - scroll_y],
+                        size: [rect.width, rect.height],
+                        color: [0.12, 0.16, 0.23, 1.0],
+                    });
+                    let label = format!("🖼️ Image [{}]", if alt.is_empty() { "Graphic" } else { alt });
+                    text_sections.push((
+                        label,
+                        [rect.x + 8.0, rect.y + 8.0 - scroll_y],
+                        Color::new(0.22, 0.74, 0.97, 1.0),
+                        14.0,
+                    ));
+                }
             }
         }
 

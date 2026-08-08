@@ -83,6 +83,11 @@ pub enum PaintCommand {
         color: Color,
         font_size: f32,
     },
+    DrawImage {
+        rect: Rect,
+        src: String,
+        alt: String,
+    },
 }
 
 pub fn build_display_list(
@@ -228,6 +233,16 @@ mod tests {
     #[test]
     fn parses_rgb_color_function() {
         assert_eq!(parse_color("rgb(255, 0, 0)"), Some(Color::new(1.0, 0.0, 0.0, 1.0)));
+    }
+
+    #[test]
+    fn test_draw_image_paint_command() {
+        let cmd = PaintCommand::DrawImage {
+            rect: Rect { x: 0.0, y: 0.0, width: 100.0, height: 100.0 },
+            src: "logo.png".to_string(),
+            alt: "Logo".to_string(),
+        };
+        assert!(matches!(cmd, PaintCommand::DrawImage { .. }));
     }
 }
 
