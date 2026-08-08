@@ -12,6 +12,31 @@ pub fn execute_js_on_dom(script: &str, dom: &mut Dom) {
     let mut vm = VM::new();
     let dom_ptr_val = dom as *mut Dom as usize;
 
+    vm.register_native_fn("addEventListener", move |_vm, args| {
+        if args.len() >= 2 {
+            println!("JS Event: Registered listener for '{}'", args[0].to_string());
+        }
+        Value::Undefined
+    });
+
+    vm.register_native_fn("setTimeout", move |_vm, args| {
+        if args.len() >= 2 {
+            println!("JS Timer: Scheduled callback for {} ms", args[1].to_string());
+        }
+        Value::Number(1.0)
+    });
+
+    vm.register_native_fn("fetch", move |_vm, args| {
+        if !args.is_empty() {
+            let url = args[0].to_string();
+            println!("JS fetch API requested: {}", url);
+            if let Ok(resp) = crate::net::fetch(&url) {
+                return Value::String(resp.body_as_string());
+            }
+        }
+        Value::Undefined
+    });
+
     vm.register_native_fn("setElementText", move |_vm, args| {
         if args.len() >= 2 {
             let target_id = args[0].to_string();

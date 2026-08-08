@@ -59,5 +59,17 @@ mod tests {
         }
         assert!(found_updated_text);
     }
+
+    #[test]
+    fn test_web_apis_timers_events_fetch() {
+        let html = r#"<html><body><h1 id="header">Title</h1></body></html>"#;
+        let mut dom = build_dom(Tokenizer::new(html).tokenize());
+
+        let script = r#"
+            addEventListener("click", 1);
+            setTimeout(1, 100);
+        "#;
+        execute_js_on_dom(script, &mut dom);
+    }
 }
 
