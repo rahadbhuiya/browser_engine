@@ -243,6 +243,12 @@ fn main() {
                                     address_bar.set_text("");
                                     state.window.request_redraw();
                                 }
+                                Key::Named(NamedKey::F12) => {
+                                    println!("\n=== DEVTOOLS (F12) ===");
+                                    println!("Active URL: {}", tab_manager.active_tab().url);
+                                    println!("Active Title: {}", tab_manager.active_tab().title);
+                                    state.window.request_redraw();
+                                }
                                 Key::Named(NamedKey::Space) => {
                                     address_bar.insert_char(' ');
                                     state.window.request_redraw();

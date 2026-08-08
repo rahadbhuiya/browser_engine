@@ -2,11 +2,13 @@
 
 pub mod address_bar;
 pub mod bookmarks;
+pub mod devtools;
 pub mod navbar;
 pub mod tab;
 
 pub use address_bar::AddressBar;
 pub use bookmarks::{Bookmark, BookmarkManager};
+pub use devtools::DevTools;
 pub use navbar::NavBarHistory;
 pub use tab::{Tab, TabManager};
 
@@ -81,6 +83,15 @@ mod tests {
 
         let b_mgr = BookmarkManager::new();
         assert_eq!(b_mgr.get_url_at_click(100.0, 90.0), Some("https://google.com".to_string()));
+    }
+
+    #[test]
+    fn test_devtools_dom_inspector() {
+        let html = "<html><body><h1>Test Page</h1></body></html>";
+        let dom = crate::dom::build_dom(crate::html::Tokenizer::new(html).tokenize());
+        let dump = DevTools::inspect_dom(&dom);
+        assert!(dump.contains("<h1 >"));
+        assert!(dump.contains("Test Page"));
     }
 }
 
