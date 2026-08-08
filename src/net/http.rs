@@ -8,12 +8,19 @@ pub struct HttpRequest {
     pub headers: HashMap<String, String>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum UserAgentMode {
+    Native,
+    Chrome,
+    Firefox,
+}
+
 impl HttpRequest {
     pub fn new_get(host: &str, path: &str) -> Self {
         let mut headers = HashMap::new();
         headers.insert("Host".to_string(), host.to_string());
-        headers.insert("User-Agent".to_string(), "SecureBrowser/1.0".to_string());
-        headers.insert("Accept".to_string(), "text/html,text/css,*/*".to_string());
+        headers.insert("User-Agent".to_string(), "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36".to_string());
+        headers.insert("Accept".to_string(), "text/html,application/xhtml+xml,text/css,*/*".to_string());
         headers.insert("Connection".to_string(), "close".to_string());
 
         HttpRequest {

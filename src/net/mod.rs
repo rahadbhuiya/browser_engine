@@ -7,7 +7,7 @@ pub mod url_parser;
 
 pub use downloader::{DownloadItem, DownloadManager};
 pub use fetch::fetch;
-pub use http::{HttpRequest, HttpResponse};
+pub use http::{HttpRequest, HttpResponse, UserAgentMode};
 pub use url_parser::{format_url_or_search_query, ParsedUrl, Scheme};
 
 #[cfg(test)]
@@ -43,6 +43,14 @@ mod tests {
         let serialized = req.serialize();
         assert!(serialized.starts_with("GET /index.html HTTP/1.1\r\n"));
         assert!(serialized.contains("Host: example.com\r\n"));
+    }
+
+    #[test]
+    fn test_user_agent_header_serialization() {
+        let req = HttpRequest::new_get("google.com", "/search");
+        let serialized = req.serialize();
+        assert!(serialized.contains("User-Agent: Mozilla/5.0"));
+        assert!(serialized.contains("Chrome/124.0.0.0"));
     }
 
     #[test]
