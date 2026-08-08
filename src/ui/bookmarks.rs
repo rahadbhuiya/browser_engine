@@ -50,4 +50,17 @@ impl BookmarkManager {
         html.push_str(r#"</div>"#);
         html
     }
+
+    pub fn get_url_at_click(&self, x: f32, y: f32) -> Option<String> {
+        if y >= 75.0 && y <= 115.0 {
+            if x >= 80.0 && x <= 160.0 && !self.items.is_empty() {
+                return Some(self.items[0].url.clone());
+            } else if x >= 165.0 && x <= 260.0 && self.items.len() > 1 {
+                return Some(self.items[1].url.clone());
+            } else if x >= 265.0 && x <= 340.0 && self.items.len() > 2 {
+                return Some(self.items[2].url.clone());
+            }
+        }
+        None
+    }
 }

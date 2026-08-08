@@ -110,4 +110,17 @@ impl TabManager {
         html.push_str(r#"<span style="color: #64748b; font-size: 12px; margin-left: 10px;">(ESC: Clear | Left/Right: Back/Forward)</span></div>"#);
         html
     }
+
+    pub fn get_tab_at_click(&self, x: f32, y: f32) -> Option<usize> {
+        if y <= 35.0 {
+            if x >= 0.0 && x <= 140.0 && !self.tabs.is_empty() {
+                return Some(0);
+            } else if x >= 145.0 && x <= 285.0 && self.tabs.len() > 1 {
+                return Some(1);
+            } else if x >= 290.0 && x <= 430.0 && self.tabs.len() > 2 {
+                return Some(2);
+            }
+        }
+        None
+    }
 }

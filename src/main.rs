@@ -136,6 +136,7 @@ fn main() {
     let mut address_bar = ui::AddressBar::new("https://google.com");
     let mut tab_manager = ui::TabManager::new();
     let bookmark_manager = ui::BookmarkManager::new();
+    let mut mouse_pos = (0.0f32, 0.0f32);
 
     event_loop.run(move |event, elwt| {
         match event {
@@ -149,6 +150,36 @@ fn main() {
                     WindowEvent::ScaleFactorChanged { .. } => {
                         state.resize(state.window.inner_size());
                         state.window.request_redraw();
+                    }
+                    WindowEvent::CursorMoved { position, .. } => {
+                        mouse_pos = (position.x as f32, position.y as f32);
+                    }
+                    WindowEvent::MouseInput { state: element_state, button: winit::event::MouseButton::Left, .. } => {
+                        if element_state == winit::event::ElementState::Pressed {
+                            let (mx, my) = mouse_pos;
+                            if let Some(tab_idx) = tab_manager.get_tab_at_click(mx, my) {
+                                tab_manager.switch_tab(tab_idx);
+                                address_bar.set_text(&tab_manager.active_tab().url);
+                                state.window.request_redraw();
+                            } else if let Some(target_url) = bookmark_manager.get_url_at_click(mx, my) {
+                                println!("Bookmark clicked: {}", target_url);
+                                address_bar.set_text(&target_url);
+                                let active_title = target_url.clone();
+                                let body = match net::fetch(&target_url) {
+                                    Ok(resp) => {
+                                        format!("<div class='card'><h2>Results for: {}</h2><p>{}</p></div>", active_title, resp.body_as_string())
+                                    }
+                                    Err(err) => {
+                                        format!("<div class='card'><h2 style='color: red;'>Fetch Error</h2><p>{}</p></div>", err)
+                                    }
+                                };
+                                tab_manager.active_tab_mut().navigate_to(&active_title, &target_url, &body);
+                                state.window.request_redraw();
+                            } else if my >= 35.0 && my <= 75.0 {
+                                address_bar.set_text("");
+                                state.window.request_redraw();
+                            }
+                        }
                     }
                     WindowEvent::KeyboardInput { event: key_event, .. } => {
                         if key_event.state == winit::event::ElementState::Pressed {

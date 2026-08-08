@@ -73,7 +73,17 @@ mod tests {
         let html = b_mgr.render_bookmarks_bar_html();
         assert!(html.contains("StackOverflow"));
     }
+
+    #[test]
+    fn test_hit_testing_mouse_clicks() {
+        let mgr = TabManager::new();
+        assert_eq!(mgr.get_tab_at_click(50.0, 20.0), Some(0));
+
+        let b_mgr = BookmarkManager::new();
+        assert_eq!(b_mgr.get_url_at_click(100.0, 90.0), Some("https://google.com".to_string()));
+    }
 }
+
 
 
 
