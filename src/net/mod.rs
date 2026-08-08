@@ -4,11 +4,13 @@ pub mod downloader;
 pub mod fetch;
 pub mod http;
 pub mod url_parser;
+pub mod websocket;
 
 pub use downloader::{DownloadItem, DownloadManager};
 pub use fetch::fetch;
 pub use http::{HttpRequest, HttpResponse, UserAgentMode};
 pub use url_parser::{format_url_or_search_query, ParsedUrl, Scheme};
+pub use websocket::{WebSocketClient, WebSocketFrame};
 
 #[cfg(test)]
 mod tests {
@@ -75,5 +77,13 @@ mod tests {
         let html = dm.render_downloads_bar_html();
         assert!(html.contains("file.zip"));
         assert!(html.contains("1024 B"));
+    }
+
+    #[test]
+    fn test_websocket_frame_serialization() {
+        let frame = WebSocketFrame::new_text("Hello WebSocket");
+        let bytes = frame.serialize();
+        assert_eq!(bytes[0], 0x81);
+        assert_eq!(bytes[1], 15);
     }
 }
