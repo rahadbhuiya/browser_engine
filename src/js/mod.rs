@@ -7,12 +7,14 @@ pub mod gc;
 pub mod lexer;
 pub mod parser;
 pub mod vm;
+pub mod worker;
 
 pub use bytecode::{Compiler, Value};
 pub use dom_bindings::execute_js_on_dom;
 pub use lexer::JsLexer;
 pub use parser::JsParser;
 pub use vm::VM;
+pub use worker::WebWorker;
 
 #[cfg(test)]
 mod tests {
@@ -82,6 +84,15 @@ mod tests {
             fillRect(10, 20, 100, 50);
         "#;
         execute_js_on_dom(script, &mut dom);
+    }
+
+    #[test]
+    fn test_web_worker_multithreading() {
+        let worker = WebWorker::new("worker.js");
+        assert!(worker.post_message("task_data").is_ok());
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        let response = worker.try_recv();
+        assert_eq!(response, Some("processed: task_data".to_string()));
     }
 }
 

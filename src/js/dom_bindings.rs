@@ -58,6 +58,22 @@ pub fn execute_js_on_dom(script: &str, dom: &mut Dom) {
         Value::Undefined
     });
 
+    vm.register_native_fn("Worker", move |_vm, args| {
+        if !args.is_empty() {
+            let script_url = args[0].to_string();
+            println!("WebWorker: Spawning worker thread for {}", script_url);
+            return Value::String(format!("Worker({})", script_url));
+        }
+        Value::Undefined
+    });
+
+    vm.register_native_fn("postMessage", move |_vm, args| {
+        if !args.is_empty() {
+            println!("WebWorker postMessage: {}", args[0].to_string());
+        }
+        Value::Undefined
+    });
+
     vm.register_native_fn("setElementText", move |_vm, args| {
         if args.len() >= 2 {
             let target_id = args[0].to_string();
