@@ -1,11 +1,13 @@
 #![allow(dead_code)]
 
 pub mod csp;
+pub mod indexeddb;
 pub mod ipc;
 pub mod sop;
 pub mod storage;
 
 pub use csp::CspPolicy;
+pub use indexeddb::{IndexedDbDatabase, IndexedDbManager, ObjectStore};
 pub use ipc::{IpcChannel, IpcMessage};
 pub use sop::Origin;
 pub use storage::{Cookie, StorageManager};
@@ -50,5 +52,16 @@ mod tests {
 
         sm.set_cookie("example.com", "session_id", "xyz123");
         assert_eq!(sm.get_cookies("example.com"), "session_id=xyz123");
+    }
+
+    #[test]
+    fn test_indexeddb_transactional_store() {
+        let mut db_mgr = IndexedDbManager::new();
+        db_mgr.open_db("example.com", "MyDatabase", 1);
+        db_mgr.create_object_store("example.com", "MyDatabase", "users");
+        db_mgr.put("example.com", "MyDatabase", "users", "user_101", "{\"name\": \"Diaz\"}");
+
+        let record = db_mgr.get("example.com", "MyDatabase", "users", "user_101");
+        assert_eq!(record, Some(&"{\"name\": \"Diaz\"}".to_string()));
     }
 }
