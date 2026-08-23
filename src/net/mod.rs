@@ -1,11 +1,13 @@
 #![allow(dead_code)]
 
+pub mod cache;
 pub mod downloader;
 pub mod fetch;
 pub mod http;
 pub mod url_parser;
 pub mod websocket;
 
+pub use cache::{CacheEntry, CacheStorageManager, ServiceWorkerManager, ServiceWorkerRegistration};
 pub use downloader::{DownloadItem, DownloadManager};
 pub use fetch::fetch;
 pub use http::{HttpRequest, HttpResponse, UserAgentMode};
@@ -85,5 +87,15 @@ mod tests {
         let bytes = frame.serialize();
         assert_eq!(bytes[0], 0x81);
         assert_eq!(bytes[1], 15);
+    }
+
+    #[test]
+    fn test_cache_storage_manager() {
+        let mut cache_mgr = CacheStorageManager::new();
+        cache_mgr.put("example.com", "v1", "https://example.com/app.js", b"console.log('hi');");
+
+        let entry = cache_mgr.match_url("example.com", "v1", "https://example.com/app.js");
+        assert!(entry.is_some());
+        assert_eq!(entry.unwrap().body, b"console.log('hi');");
     }
 }
