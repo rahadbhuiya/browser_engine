@@ -1,12 +1,14 @@
 #![allow(dead_code)]
 
 pub mod csp;
+pub mod geolocation;
 pub mod indexeddb;
 pub mod ipc;
 pub mod sop;
 pub mod storage;
 
 pub use csp::CspPolicy;
+pub use geolocation::{GeoManager, GeoPosition, NotificationItem, NotificationManager};
 pub use indexeddb::{IndexedDbDatabase, IndexedDbManager, ObjectStore};
 pub use ipc::{IpcChannel, IpcMessage};
 pub use sop::Origin;
@@ -63,5 +65,16 @@ mod tests {
 
         let record = db_mgr.get("example.com", "MyDatabase", "users", "user_101");
         assert_eq!(record, Some(&"{\"name\": \"Diaz\"}".to_string()));
+    }
+
+    #[test]
+    fn test_geolocation_and_notifications() {
+        let pos = GeoManager::get_current_position();
+        assert_eq!(pos.latitude, 23.8103);
+        assert_eq!(pos.longitude, 90.4125);
+
+        let notif = NotificationManager::show_notification("Alert", "Test Message");
+        assert_eq!(notif.title, "Alert");
+        assert_eq!(notif.body, "Test Message");
     }
 }
