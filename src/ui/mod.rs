@@ -100,6 +100,18 @@ mod tests {
         let matches = tab.find_in_page("Engine");
         assert!(matches >= 1);
     }
+
+    #[test]
+    fn test_tab_page_zoom_controls() {
+        let mut tab = Tab::new(1, "Test", "https://example.com");
+        assert_eq!(tab.zoom_level, 1.0);
+        tab.zoom_in();
+        assert!((tab.zoom_level - 1.10).abs() < 0.001);
+        tab.zoom_out();
+        assert!((tab.zoom_level - 1.00).abs() < 0.001);
+        tab.reset_zoom();
+        assert_eq!(tab.zoom_level, 1.0);
+    }
 }
 
 

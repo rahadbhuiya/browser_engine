@@ -7,6 +7,7 @@ pub struct Tab {
     pub url: String,
     pub page_body: String,
     pub scroll_y: f32,
+    pub zoom_level: f32,
     pub history: NavBarHistory,
 }
 
@@ -36,6 +37,7 @@ impl Tab {
                 "#
             ),
             scroll_y: 0.0,
+            zoom_level: 1.0,
             history,
         }
     }
@@ -46,6 +48,18 @@ impl Tab {
         self.page_body = body.to_string();
         self.scroll_y = 0.0;
         self.history.navigate_to(url);
+    }
+
+    pub fn zoom_in(&mut self) {
+        self.zoom_level = (self.zoom_level + 0.10).min(2.5);
+    }
+
+    pub fn zoom_out(&mut self) {
+        self.zoom_level = (self.zoom_level - 0.10).max(0.5);
+    }
+
+    pub fn reset_zoom(&mut self) {
+        self.zoom_level = 1.0;
     }
 
     pub fn find_in_page(&self, query: &str) -> usize {

@@ -253,6 +253,16 @@ fn main() {
                                     address_bar.insert_char(' ');
                                     state.window.request_redraw();
                                 }
+                                Key::Character(ch_str) if ch_str == "+" || ch_str == "=" => {
+                                    tab_manager.active_tab_mut().zoom_in();
+                                    println!("Zoom level: {:.0}%", tab_manager.active_tab().zoom_level * 100.0);
+                                    state.window.request_redraw();
+                                }
+                                Key::Character(ch_str) if ch_str == "-" => {
+                                    tab_manager.active_tab_mut().zoom_out();
+                                    println!("Zoom level: {:.0}%", tab_manager.active_tab().zoom_level * 100.0);
+                                    state.window.request_redraw();
+                                }
                                 Key::Character(ch_str) => {
                                     for c in ch_str.chars() {
                                         address_bar.insert_char(c);
