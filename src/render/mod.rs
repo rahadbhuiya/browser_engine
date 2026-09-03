@@ -3,6 +3,9 @@ use wgpu::util::DeviceExt;
 use winit::window::Window;
 use wgpu_glyph::{ab_glyph, GlyphBrush, GlyphBrushBuilder, Section, Text};
 
+pub mod image_decoder;
+pub use image_decoder::{DecodedImage, ImageCache};
+
 use crate::paint::{PaintCommand, Color};
 
 #[repr(C)]
@@ -408,5 +411,32 @@ impl RenderState {
         self.staging_belt.recall();
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_image_cache_decoding() {
+        let png_bytes: &[u8] = &[
+            0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D,
+            0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+            0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4, 0x89, 0x00, 0x00, 0x00,
+            0x0A, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00,
+            0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00, 0x00, 0x00, 0x00, 0x49,
+            0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
+        ];
+
+        let mut cache = ImageCache::new();
+        assert!(cache.is_empty());
+        let res = cache.load_from_memory("https://example.com/logo.png", &png_bytes);
+        assert!(res.is_ok());
+        let decoded = res.unwrap();
+        assert_eq!(decoded.width, 1);
+        assert_eq!(decoded.height, 1);
+        assert_eq!(decoded.rgba.len(), 4);
+        assert_eq!(cache.len(), 1);
     }
 }
