@@ -6,6 +6,7 @@ pub mod dom_bindings;
 pub mod gc;
 pub mod lexer;
 pub mod parser;
+pub mod runtime;
 pub mod vm;
 pub mod worker;
 
@@ -13,6 +14,7 @@ pub use bytecode::{Compiler, Value};
 pub use dom_bindings::execute_js_on_dom;
 pub use lexer::JsLexer;
 pub use parser::JsParser;
+pub use runtime::JsRuntime;
 pub use vm::VM;
 pub use worker::WebWorker;
 
@@ -93,6 +95,29 @@ mod tests {
         std::thread::sleep(std::time::Duration::from_millis(50));
         let response = worker.try_recv();
         assert_eq!(response, Some("processed: task_data".to_string()));
+    }
+
+    #[test]
+    fn test_js_runtime_execution() {
+        let html = r#"<html><body><h1 id="title">Initial</h1><script>setElementText("title", "Updated by JsRuntime");</script></body></html>"#;
+        let mut dom = build_dom(Tokenizer::new(html).tokenize());
+
+        let scripts = JsRuntime::extract_scripts(&dom);
+        assert_eq!(scripts.len(), 1);
+
+        let mut runtime = JsRuntime::new();
+        assert!(runtime.execute(&scripts[0], &mut dom).is_ok());
+
+        let mut found = false;
+        for node in &dom.nodes {
+            if let NodeType::Text(t) = &node.node_type {
+                if t == "Updated by JsRuntime" {
+                    found = true;
+                    break;
+                }
+            }
+        }
+        assert!(found);
     }
 }
 

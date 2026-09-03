@@ -231,9 +231,19 @@ fn main() {
                                     let body = match net::fetch(&target_url) {
                                         Ok(resp) => {
                                             let raw_body = resp.body_as_string();
-                                            let temp_dom = build_dom(Tokenizer::new(&raw_body).tokenize());
+                                            let mut temp_dom = build_dom(Tokenizer::new(&raw_body).tokenize());
                                             let res = net::discover_resources(&temp_dom, &target_url);
                                             let external_css = net::ResourceLoader::fetch_all_stylesheets(&res.stylesheets);
+
+                                            // Execute embedded scripts with JsRuntime
+                                            let scripts = js::JsRuntime::extract_scripts(&temp_dom);
+                                            if !scripts.is_empty() {
+                                                let mut runtime = js::JsRuntime::new();
+                                                for s in &scripts {
+                                                    let _ = runtime.execute(s, &mut temp_dom);
+                                                }
+                                            }
+
                                             if !external_css.is_empty() {
                                                 format!("<style>{}</style>{}", external_css, raw_body)
                                             } else {
