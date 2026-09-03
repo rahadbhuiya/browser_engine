@@ -38,15 +38,18 @@ pub struct LayoutBox {
 }
 
 impl LayoutBox {
-    fn new_block(node_idx: usize) -> Self {
+    pub fn new(box_type: BoxType) -> Self {
         LayoutBox {
             dimensions: Dimensions::default(),
-            box_type: BoxType::Block(node_idx),
+            box_type,
             children: vec![],
             text_content: None,
         }
     }
-    fn new_anonymous_text(text: String) -> Self {
+    pub fn new_block(node_idx: usize) -> Self {
+        LayoutBox::new(BoxType::Block(node_idx))
+    }
+    pub fn new_anonymous_text(text: String) -> Self {
         LayoutBox {
             dimensions: Dimensions::default(),
             box_type: BoxType::Anonymous,

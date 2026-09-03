@@ -206,13 +206,23 @@ fn build_recursive(
                         }
                     })
                     .unwrap_or(16.0);
+                let char_width = 8.0 * (font_size / 16.0);
+                let line_height = 18.0 * (font_size / 16.0);
+                let lines = crate::layout::engine::wrap_text(text, lb.dimensions.content.width, char_width);
 
-                list.push(PaintCommand::DrawText {
-                    text: text.clone(),
-                    rect: lb.dimensions.content,
-                    color,
-                    font_size,
-                });
+                for (idx, line) in lines.into_iter().enumerate() {
+                    list.push(PaintCommand::DrawText {
+                        text: line,
+                        rect: Rect {
+                            x: lb.dimensions.content.x,
+                            y: lb.dimensions.content.y + idx as f32 * line_height,
+                            width: lb.dimensions.content.width,
+                            height: line_height,
+                        },
+                        color,
+                        font_size,
+                    });
+                }
             }
         }
     }
