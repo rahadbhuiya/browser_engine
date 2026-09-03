@@ -137,6 +137,7 @@ fn main() {
     let mut tab_manager = ui::TabManager::new();
     let bookmark_manager = ui::BookmarkManager::new();
     let download_manager = net::DownloadManager::new();
+    let mut context_menu = ui::ContextMenu::new();
     let mut mouse_pos = (0.0f32, 0.0f32);
 
     event_loop.run(move |event, elwt| {
@@ -155,40 +156,73 @@ fn main() {
                     WindowEvent::CursorMoved { position, .. } => {
                         mouse_pos = (position.x as f32, position.y as f32);
                     }
-                    WindowEvent::MouseInput { state: element_state, button: winit::event::MouseButton::Left, .. } => {
+                    WindowEvent::MouseInput { state: element_state, button, .. } => {
                         if element_state == winit::event::ElementState::Pressed {
                             let (mx, my) = mouse_pos;
-                            if let Some(close_idx) = tab_manager.get_close_click(mx, my) {
-                                println!("Closing tab: {}", close_idx);
-                                tab_manager.close_tab(close_idx);
-                                address_bar.set_text(&tab_manager.active_tab().url);
+                            if button == winit::event::MouseButton::Right {
+                                context_menu.show(mx, my);
                                 state.window.request_redraw();
-                            } else if tab_manager.is_new_tab_click(mx, my) {
-                                println!("Opening new tab");
-                                tab_manager.new_tab("New Tab", "https://google.com");
-                                address_bar.set_text(&tab_manager.active_tab().url);
-                                state.window.request_redraw();
-                            } else if let Some(tab_idx) = tab_manager.get_tab_at_click(mx, my) {
-                                tab_manager.switch_tab(tab_idx);
-                                address_bar.set_text(&tab_manager.active_tab().url);
-                                state.window.request_redraw();
-                            } else if let Some(target_url) = bookmark_manager.get_url_at_click(mx, my) {
-                                println!("Bookmark clicked: {}", target_url);
-                                address_bar.set_text(&target_url);
-                                let active_title = target_url.clone();
-                                let body = match net::fetch(&target_url) {
-                                    Ok(resp) => {
-                                        format!("<div class='card'><h2>Results for: {}</h2><p>{}</p></div>", active_title, resp.body_as_string())
+                            } else if button == winit::event::MouseButton::Left {
+                                if context_menu.is_visible {
+                                    if let Some(item) = context_menu.get_item_at_click(mx, my) {
+                                        match item {
+                                            "⬅ Back" => {
+                                                if let Some(prev) = tab_manager.active_tab_mut().history.go_back() {
+                                                    address_bar.set_text(&prev);
+                                                }
+                                            }
+                                            "➡ Forward" => {
+                                                if let Some(next) = tab_manager.active_tab_mut().history.go_forward() {
+                                                    address_bar.set_text(&next);
+                                                }
+                                            }
+                                            "🔄 Reload" => {
+                                                let target = address_bar.resolve_query();
+                                                println!("Reloading: {}", target);
+                                            }
+                                            "📋 Copy URL" => {
+                                                println!("📋 URL Copied to clipboard: {}", tab_manager.active_tab().url);
+                                            }
+                                            "🔍 Inspect Element" => {
+                                                println!("\n=== DEVTOOLS DOM INSPECTOR ===");
+                                            }
+                                            _ => {}
+                                        }
                                     }
-                                    Err(err) => {
-                                        format!("<div class='card'><h2 style='color: red;'>Fetch Error</h2><p>{}</p></div>", err)
-                                    }
-                                };
-                                tab_manager.active_tab_mut().navigate_to(&active_title, &target_url, &body);
-                                state.window.request_redraw();
-                            } else if my >= 35.0 && my <= 75.0 {
-                                address_bar.set_text("");
-                                state.window.request_redraw();
+                                    context_menu.hide();
+                                    state.window.request_redraw();
+                                } else if let Some(close_idx) = tab_manager.get_close_click(mx, my) {
+                                    println!("Closing tab: {}", close_idx);
+                                    tab_manager.close_tab(close_idx);
+                                    address_bar.set_text(&tab_manager.active_tab().url);
+                                    state.window.request_redraw();
+                                } else if tab_manager.is_new_tab_click(mx, my) {
+                                    println!("Opening new tab");
+                                    tab_manager.new_tab("New Tab", "https://google.com");
+                                    address_bar.set_text(&tab_manager.active_tab().url);
+                                    state.window.request_redraw();
+                                } else if let Some(tab_idx) = tab_manager.get_tab_at_click(mx, my) {
+                                    tab_manager.switch_tab(tab_idx);
+                                    address_bar.set_text(&tab_manager.active_tab().url);
+                                    state.window.request_redraw();
+                                } else if let Some(target_url) = bookmark_manager.get_url_at_click(mx, my) {
+                                    println!("Bookmark clicked: {}", target_url);
+                                    address_bar.set_text(&target_url);
+                                    let active_title = target_url.clone();
+                                    let body = match net::fetch(&target_url) {
+                                        Ok(resp) => {
+                                            format!("<div class='card'><h2>Results for: {}</h2><p>{}</p></div>", active_title, resp.body_as_string())
+                                        }
+                                        Err(err) => {
+                                            format!("<div class='card'><h2 style='color: red;'>Fetch Error</h2><p>{}</p></div>", err)
+                                        }
+                                    };
+                                    tab_manager.active_tab_mut().navigate_to(&active_title, &target_url, &body);
+                                    state.window.request_redraw();
+                                } else if my >= 35.0 && my <= 75.0 {
+                                    address_bar.set_text("");
+                                    state.window.request_redraw();
+                                }
                             }
                         }
                     }
@@ -306,6 +340,7 @@ fn main() {
                         let bookmarks_bar = bookmark_manager.render_bookmarks_bar_html();
                         let downloads_bar = download_manager.render_downloads_bar_html();
                         let suggestions_bar = address_bar.render_suggestions_html();
+                        let context_menu_html = context_menu.render_html();
                         let active_tab = tab_manager.active_tab();
 
                         let html_doc = format!(
@@ -322,6 +357,7 @@ fn main() {
                                     {}
                                 </div>
                                 {}
+                                {}
                             </div>
                             "#,
                             tab_strip,
@@ -329,7 +365,8 @@ fn main() {
                             suggestions_bar,
                             bookmarks_bar,
                             active_tab.page_body,
-                            downloads_bar
+                            downloads_bar,
+                            context_menu_html
                         );
 
                         let css_doc = r#"

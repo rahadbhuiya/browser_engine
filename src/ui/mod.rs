@@ -2,12 +2,14 @@
 
 pub mod address_bar;
 pub mod bookmarks;
+pub mod context_menu;
 pub mod devtools;
 pub mod navbar;
 pub mod tab;
 
 pub use address_bar::AddressBar;
 pub use bookmarks::{Bookmark, BookmarkManager};
+pub use context_menu::ContextMenu;
 pub use devtools::DevTools;
 pub use navbar::NavBarHistory;
 pub use tab::{Tab, TabManager};
@@ -138,6 +140,28 @@ mod tests {
         let html = bar.render_suggestions_html();
         assert!(html.contains("youtube.com"));
         assert!(html.contains("suggestions"));
+    }
+
+    #[test]
+    fn test_context_menu_interaction() {
+        let mut menu = ContextMenu::new();
+        assert!(!menu.is_visible);
+        menu.show(100.0, 100.0);
+        assert!(menu.is_visible);
+
+        let item = menu.get_item_at_click(120.0, 110.0);
+        assert_eq!(item, Some("⬅ Back"));
+
+        let item2 = menu.get_item_at_click(120.0, 138.0);
+        assert_eq!(item2, Some("➡ Forward"));
+
+        let html = menu.render_html();
+        assert!(html.contains("context-menu"));
+        assert!(html.contains("Reload"));
+
+        menu.hide();
+        assert!(!menu.is_visible);
+        assert_eq!(menu.get_item_at_click(120.0, 110.0), None);
     }
 }
 
