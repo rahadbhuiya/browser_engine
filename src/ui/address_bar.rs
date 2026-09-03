@@ -29,5 +29,56 @@ impl AddressBar {
     pub fn resolve_query(&self) -> String {
         crate::net::format_url_or_search_query(&self.url_text)
     }
-}
 
+    pub fn generate_suggestions(&self) -> Vec<String> {
+        let input = self.url_text.trim().to_ascii_lowercase();
+        if input.is_empty() {
+            return Vec::new();
+        }
+
+        let popular_sites = [
+            ("google", "https://google.com"),
+            ("youtube", "https://youtube.com"),
+            ("github", "https://github.com"),
+            ("wikipedia", "https://wikipedia.org"),
+            ("rust", "https://rust-lang.org"),
+            ("reddit", "https://reddit.com"),
+            ("twitter", "https://twitter.com"),
+            ("chatgpt", "https://chatgpt.com"),
+        ];
+
+        let mut suggestions = Vec::new();
+
+        for (keyword, url) in &popular_sites {
+            if keyword.starts_with(&input) || input.contains(keyword) {
+                suggestions.push(format!("🌐 Visit: {}", url));
+            }
+        }
+
+        suggestions.push(format!("🔍 Google Search: \"{}\"", self.url_text));
+
+        if !input.contains('.') && !input.contains('/') {
+            suggestions.push(format!("🌐 https://www.{}.com", input));
+        }
+
+        suggestions.truncate(4);
+        suggestions
+    }
+
+    pub fn render_suggestions_html(&self) -> String {
+        let suggestions = self.generate_suggestions();
+        if suggestions.is_empty() {
+            return String::new();
+        }
+
+        let mut html = String::from(r#"<div class="suggestions" style="background-color: #1e293b; border: 1px solid #475569; border-radius: 6px; padding: 4px; margin-top: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">"#);
+        for item in &suggestions {
+            html.push_str(&format!(
+                r#"<div style="padding: 6px 10px; color: #94a3b8; font-size: 13px; border-bottom: 1px solid #334155;">{}</div>"#,
+                item
+            ));
+        }
+        html.push_str("</div>");
+        html
+    }
+}

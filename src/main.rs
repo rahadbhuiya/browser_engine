@@ -158,7 +158,17 @@ fn main() {
                     WindowEvent::MouseInput { state: element_state, button: winit::event::MouseButton::Left, .. } => {
                         if element_state == winit::event::ElementState::Pressed {
                             let (mx, my) = mouse_pos;
-                            if let Some(tab_idx) = tab_manager.get_tab_at_click(mx, my) {
+                            if let Some(close_idx) = tab_manager.get_close_click(mx, my) {
+                                println!("Closing tab: {}", close_idx);
+                                tab_manager.close_tab(close_idx);
+                                address_bar.set_text(&tab_manager.active_tab().url);
+                                state.window.request_redraw();
+                            } else if tab_manager.is_new_tab_click(mx, my) {
+                                println!("Opening new tab");
+                                tab_manager.new_tab("New Tab", "https://google.com");
+                                address_bar.set_text(&tab_manager.active_tab().url);
+                                state.window.request_redraw();
+                            } else if let Some(tab_idx) = tab_manager.get_tab_at_click(mx, my) {
                                 tab_manager.switch_tab(tab_idx);
                                 address_bar.set_text(&tab_manager.active_tab().url);
                                 state.window.request_redraw();
@@ -295,6 +305,7 @@ fn main() {
                         let tab_strip = tab_manager.render_tab_strip_html();
                         let bookmarks_bar = bookmark_manager.render_bookmarks_bar_html();
                         let downloads_bar = download_manager.render_downloads_bar_html();
+                        let suggestions_bar = address_bar.render_suggestions_html();
                         let active_tab = tab_manager.active_tab();
 
                         let html_doc = format!(
@@ -304,6 +315,7 @@ fn main() {
                                 <div class="navbar">
                                     <p class="nav-title">SEARCH OR TYPE URL (Press Enter to Load | ESC to Clear):</p>
                                     <p class="address-input">[ {} | ]</p>
+                                    {}
                                 </div>
                                 {}
                                 <div class="content">
@@ -314,6 +326,7 @@ fn main() {
                             "#,
                             tab_strip,
                             address_bar.url_text,
+                            suggestions_bar,
                             bookmarks_bar,
                             active_tab.page_body,
                             downloads_bar

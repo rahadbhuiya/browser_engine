@@ -112,6 +112,33 @@ mod tests {
         tab.reset_zoom();
         assert_eq!(tab.zoom_level, 1.0);
     }
+
+    #[test]
+    fn test_tab_closing_and_new_tab() {
+        let mut mgr = TabManager::new();
+        mgr.new_tab("Second Tab", "https://github.com");
+        assert_eq!(mgr.tabs.len(), 2);
+
+        // Click close on tab 1
+        assert_eq!(mgr.get_close_click(140.0 * 2.0 - 5.0, 20.0), Some(1));
+        mgr.close_tab(1);
+        assert_eq!(mgr.tabs.len(), 1);
+
+        // Click new tab [+]
+        assert!(mgr.is_new_tab_click(146.0 * 1.0 + 10.0, 20.0));
+    }
+
+    #[test]
+    fn test_address_bar_search_suggestions() {
+        let bar = AddressBar::new("you");
+        let suggestions = bar.generate_suggestions();
+        assert!(!suggestions.is_empty());
+        assert!(suggestions.iter().any(|s| s.contains("youtube.com")));
+
+        let html = bar.render_suggestions_html();
+        assert!(html.contains("youtube.com"));
+        assert!(html.contains("suggestions"));
+    }
 }
 
 

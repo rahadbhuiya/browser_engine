@@ -129,24 +129,50 @@ impl TabManager {
             let border = if is_active { "2px solid #6366f1" } else { "1px solid #334155" };
             
             html.push_str(&format!(
-                r#"<span style="background-color: {}; color: {}; border: {}; padding: 6px 14px; margin-right: 6px; font-weight: bold; font-size: 13px;">[{}] {}</span>"#,
+                r#"<span style="background-color: {}; color: {}; border: {}; padding: 6px 14px; margin-right: 6px; font-weight: bold; font-size: 13px;">[{}] {}  [x]</span>"#,
                 bg_color, text_color, border, i + 1, tab.title
             ));
         }
+        html.push_str(r#"<span style="background-color: #1e293b; color: #10b981; border: 1px solid #059669; padding: 6px 12px; font-weight: bold; font-size: 13px;">[+]</span>"#);
         html.push_str(r#"<span style="color: #64748b; font-size: 12px; margin-left: 10px;">(ESC: Clear | Left/Right: Back/Forward)</span></div>"#);
         html
     }
 
     pub fn get_tab_at_click(&self, x: f32, y: f32) -> Option<usize> {
-        if y <= 35.0 {
-            if x >= 0.0 && x <= 140.0 && !self.tabs.is_empty() {
-                return Some(0);
-            } else if x >= 145.0 && x <= 285.0 && self.tabs.len() > 1 {
-                return Some(1);
-            } else if x >= 290.0 && x <= 430.0 && self.tabs.len() > 2 {
-                return Some(2);
+        if y <= 40.0 {
+            let stride = 146.0;
+            let tab_width = 140.0;
+            for i in 0..self.tabs.len() {
+                let start_x = i as f32 * stride;
+                if x >= start_x && x < (start_x + tab_width - 25.0) {
+                    return Some(i);
+                }
             }
         }
         None
+    }
+
+    pub fn get_close_click(&self, x: f32, y: f32) -> Option<usize> {
+        if y <= 40.0 {
+            let stride = 146.0;
+            let tab_width = 140.0;
+            for i in 0..self.tabs.len() {
+                let start_x = i as f32 * stride;
+                if x >= (start_x + tab_width - 25.0) && x <= (start_x + tab_width) {
+                    return Some(i);
+                }
+            }
+        }
+        None
+    }
+
+    pub fn is_new_tab_click(&self, x: f32, y: f32) -> bool {
+        if y <= 40.0 {
+            let stride = 146.0;
+            let plus_x = self.tabs.len() as f32 * stride;
+            x >= plus_x && x <= (plus_x + 50.0)
+        } else {
+            false
+        }
     }
 }
