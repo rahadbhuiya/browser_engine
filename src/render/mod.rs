@@ -17,6 +17,8 @@ pub struct InstanceRaw {
     pub position: [f32; 2],
     pub size: [f32; 2],
     pub color: [f32; 4],
+    pub corner_radius: f32,
+    pub _padding: [f32; 3],
 }
 
 #[repr(C)]
@@ -194,6 +196,11 @@ impl RenderState {
                                 shader_location: 3,
                                 format: wgpu::VertexFormat::Float32x4,
                             },
+                            wgpu::VertexAttribute {
+                                offset: 32,
+                                shader_location: 4,
+                                format: wgpu::VertexFormat::Float32,
+                            },
                         ],
                     },
                 ],
@@ -293,11 +300,13 @@ impl RenderState {
 
         for cmd in paint_commands {
             match cmd {
-                PaintCommand::DrawRect { rect, color } => {
+                PaintCommand::DrawRect { rect, color, border_radius } => {
                     instances.push(InstanceRaw {
                         position: [rect.x, rect.y - scroll_y],
                         size: [rect.width, rect.height],
                         color: [color.r, color.g, color.b, color.a],
+                        corner_radius: *border_radius,
+                        _padding: [0.0; 3],
                     });
                 }
                 PaintCommand::DrawText { text, rect, color, font_size } => {
@@ -313,6 +322,8 @@ impl RenderState {
                         position: [rect.x, rect.y - scroll_y],
                         size: [rect.width, rect.height],
                         color: [0.12, 0.16, 0.23, 1.0],
+                        corner_radius: 6.0,
+                        _padding: [0.0; 3],
                     });
                     let label = format!("🖼️ Image [{}]", if alt.is_empty() { "Graphic" } else { alt });
                     text_sections.push((

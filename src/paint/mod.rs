@@ -47,6 +47,12 @@ pub fn parse_color(val: &str) -> Option<Color> {
             let g = (chars[3].to_digit(16)? * 16 + chars[4].to_digit(16)?) as f32 / 255.0;
             let b = (chars[5].to_digit(16)? * 16 + chars[6].to_digit(16)?) as f32 / 255.0;
             return Some(Color::new(r, g, b, 1.0));
+        } else if chars.len() == 9 {
+            let r = (chars[1].to_digit(16)? * 16 + chars[2].to_digit(16)?) as f32 / 255.0;
+            let g = (chars[3].to_digit(16)? * 16 + chars[4].to_digit(16)?) as f32 / 255.0;
+            let b = (chars[5].to_digit(16)? * 16 + chars[6].to_digit(16)?) as f32 / 255.0;
+            let a = (chars[7].to_digit(16)? * 16 + chars[8].to_digit(16)?) as f32 / 255.0;
+            return Some(Color::new(r, g, b, a));
         }
     } else if s.starts_with("rgb(") && s.ends_with(')') {
         let content = &s[4..s.len() - 1];
@@ -56,6 +62,16 @@ pub fn parse_color(val: &str) -> Option<Color> {
             let g = parts[1].trim().parse::<f32>().ok()? / 255.0;
             let b = parts[2].trim().parse::<f32>().ok()? / 255.0;
             return Some(Color::new(r, g, b, 1.0));
+        }
+    } else if s.starts_with("rgba(") && s.ends_with(')') {
+        let content = &s[5..s.len() - 1];
+        let parts: Vec<&str> = content.split(',').collect();
+        if parts.len() == 4 {
+            let r = parts[0].trim().parse::<f32>().ok()? / 255.0;
+            let g = parts[1].trim().parse::<f32>().ok()? / 255.0;
+            let b = parts[2].trim().parse::<f32>().ok()? / 255.0;
+            let a = parts[3].trim().parse::<f32>().ok()?;
+            return Some(Color::new(r, g, b, a.clamp(0.0, 1.0)));
         }
     } else {
         match s.as_str() {
@@ -76,6 +92,7 @@ pub enum PaintCommand {
     DrawRect {
         rect: Rect,
         color: Color,
+        border_radius: f32,
     },
     DrawText {
         text: String,
@@ -108,7 +125,29 @@ fn build_recursive(
     match lb.box_type {
         BoxType::Block(node_idx) => {
             let style = styles.get(&node_idx);
-            
+
+            let border_radius = style
+                .and_then(|s| s.get("border-radius"))
+                .map(|br| crate::layout::engine::parse_length(br, lb.dimensions.content.width))
+                .unwrap_or(0.0);
+
+            // 0. Draw Box Shadow (Elevation)
+            if let Some(s) = style {
+                if let Some(shadow_str) = s.get("box-shadow") {
+                    let shadow_color = parse_color("rgba(0, 0, 0, 0.35)").unwrap_or(Color::new(0.0, 0.0, 0.0, 0.35));
+                    list.push(PaintCommand::DrawRect {
+                        rect: Rect {
+                            x: lb.dimensions.padding_box().x + 2.0,
+                            y: lb.dimensions.padding_box().y + 4.0,
+                            width: lb.dimensions.padding_box().width,
+                            height: lb.dimensions.padding_box().height,
+                        },
+                        color: shadow_color,
+                        border_radius: border_radius + 2.0,
+                    });
+                }
+            }
+
             // 1. Draw Background
             if let Some(s) = style {
                 if let Some(bg_color_str) = s.get("background-color") {
@@ -117,6 +156,7 @@ fn build_recursive(
                             list.push(PaintCommand::DrawRect {
                                 rect: lb.dimensions.padding_box(),
                                 color,
+                                border_radius,
                             });
                         }
                     }
@@ -143,6 +183,7 @@ fn build_recursive(
                             height: border_width.top,
                         },
                         color,
+                        border_radius: 0.0,
                     });
                 }
                 // Bottom Border
@@ -155,6 +196,7 @@ fn build_recursive(
                             height: border_width.bottom,
                         },
                         color,
+                        border_radius: 0.0,
                     });
                 }
                 // Left Border
@@ -167,6 +209,7 @@ fn build_recursive(
                             height: border_box.height,
                         },
                         color,
+                        border_radius: 0.0,
                     });
                 }
                 // Right Border
@@ -179,6 +222,7 @@ fn build_recursive(
                             height: border_box.height,
                         },
                         color,
+                        border_radius: 0.0,
                     });
                 }
             }
@@ -189,7 +233,6 @@ fn build_recursive(
         }
         BoxType::Anonymous => {
             if let Some(text) = &lb.text_content {
-                // Inherit text color and font size from parent block style
                 let color = parent_style
                     .and_then(|s| s.get("color"))
                     .and_then(|c| parse_color(c))
@@ -206,6 +249,7 @@ fn build_recursive(
                         }
                     })
                     .unwrap_or(16.0);
+
                 let char_width = 8.0 * (font_size / 16.0);
                 let line_height = 18.0 * (font_size / 16.0);
                 let lines = crate::layout::engine::wrap_text(text, lb.dimensions.content.width, char_width);
@@ -243,6 +287,7 @@ mod tests {
     #[test]
     fn parses_rgb_color_function() {
         assert_eq!(parse_color("rgb(255, 0, 0)"), Some(Color::new(1.0, 0.0, 0.0, 1.0)));
+        assert_eq!(parse_color("rgba(0, 128, 255, 0.5)"), Some(Color::new(0.0, 128.0 / 255.0, 1.0, 0.5)));
     }
 
     #[test]
@@ -254,5 +299,22 @@ mod tests {
         };
         assert!(matches!(cmd, PaintCommand::DrawImage { .. }));
     }
-}
 
+    #[test]
+    fn test_border_radius_display_list() {
+        let mut box_node = LayoutBox::new(BoxType::Block(0));
+        let mut styles = HashMap::new();
+        let mut style = HashMap::new();
+        style.insert("background-color".to_string(), "#1e293b".to_string());
+        style.insert("border-radius".to_string(), "12px".to_string());
+        styles.insert(0, style);
+
+        let list = build_display_list(&box_node, &styles);
+        assert!(!list.is_empty());
+        if let PaintCommand::DrawRect { border_radius, .. } = &list[0] {
+            assert_eq!(*border_radius, 12.0);
+        } else {
+            panic!("Expected DrawRect with border_radius");
+        }
+    }
+}
