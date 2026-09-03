@@ -4,6 +4,7 @@ pub mod cache;
 pub mod downloader;
 pub mod fetch;
 pub mod http;
+pub mod resource_loader;
 pub mod url_parser;
 pub mod websocket;
 
@@ -11,6 +12,7 @@ pub use cache::{CacheEntry, CacheStorageManager, ServiceWorkerManager, ServiceWo
 pub use downloader::{DownloadItem, DownloadManager};
 pub use fetch::fetch;
 pub use http::{HttpRequest, HttpResponse, UserAgentMode};
+pub use resource_loader::{discover_resources, resolve_url, DiscoveredResources, ResourceLoader};
 pub use url_parser::{format_url_or_search_query, ParsedUrl, Scheme};
 pub use websocket::{WebSocketClient, WebSocketFrame};
 
@@ -97,5 +99,40 @@ mod tests {
         let entry = cache_mgr.match_url("example.com", "v1", "https://example.com/app.js");
         assert!(entry.is_some());
         assert_eq!(entry.unwrap().body, b"console.log('hi');");
+    }
+
+    #[test]
+    fn test_resolve_url() {
+        assert_eq!(
+            resolve_url("https://example.com/blog/post.html", "/css/style.css"),
+            "https://example.com/css/style.css"
+        );
+        assert_eq!(
+            resolve_url("https://example.com/blog/post.html", "theme.css"),
+            "https://example.com/blog/theme.css"
+        );
+        assert_eq!(
+            resolve_url("https://example.com", "https://cdn.com/app.css"),
+            "https://cdn.com/app.css"
+        );
+    }
+
+    #[test]
+    fn test_discover_resources() {
+        let html = r#"
+            <html>
+            <head>
+                <link rel="stylesheet" href="/assets/main.css">
+                <link rel="icon" href="/favicon.ico">
+            </head>
+            <body>
+                <img src="logo.png">
+            </body>
+            </html>
+        "#;
+        let dom = crate::dom::build_dom(crate::html::Tokenizer::new(html).tokenize());
+        let res = discover_resources(&dom, "https://example.com/app/");
+        assert_eq!(res.stylesheets, vec!["https://example.com/assets/main.css"]);
+        assert_eq!(res.images, vec!["https://example.com/app/logo.png"]);
     }
 }

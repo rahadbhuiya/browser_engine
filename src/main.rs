@@ -230,7 +230,15 @@ fn main() {
                                     let active_title = address_bar.url_text.clone();
                                     let body = match net::fetch(&target_url) {
                                         Ok(resp) => {
-                                            format!("<div class='card'><h2>Results for: {}</h2><p>{}</p></div>", active_title, resp.body_as_string())
+                                            let raw_body = resp.body_as_string();
+                                            let temp_dom = build_dom(Tokenizer::new(&raw_body).tokenize());
+                                            let res = net::discover_resources(&temp_dom, &target_url);
+                                            let external_css = net::ResourceLoader::fetch_all_stylesheets(&res.stylesheets);
+                                            if !external_css.is_empty() {
+                                                format!("<style>{}</style>{}", external_css, raw_body)
+                                            } else {
+                                                raw_body
+                                            }
                                         }
                                         Err(err) => {
                                             format!("<div class='card'><h2 style='color: red;'>Fetch Error</h2><p>{}</p></div>", err)
@@ -312,7 +320,22 @@ fn main() {
                         "#;
 
                         let dom_tree = build_dom(Tokenizer::new(&html_doc).tokenize());
-                        let stylesheet = CssParser::new(CssTokenizer::new(css_doc).tokenize()).parse();
+                        let mut stylesheet = CssParser::new(CssTokenizer::new(css_doc).tokenize()).parse();
+
+                        // Merge embedded <style> blocks from the loaded page into stylesheet cascade
+                        for node in &dom_tree.nodes {
+                            if let dom::NodeType::Element(elem) = &node.node_type {
+                                if elem.tag.to_ascii_lowercase() == "style" {
+                                    for child_idx in &node.children {
+                                        if let dom::NodeType::Text(css_text) = &dom_tree.nodes[*child_idx].node_type {
+                                            let parsed_sheet = CssParser::new(CssTokenizer::new(css_text).tokenize()).parse();
+                                            stylesheet.rules.extend(parsed_sheet.rules);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
                         let styles = compute_styles(&dom_tree, &stylesheet);
 
                         if let Some(mut layout_root) = build_layout_tree(&dom_tree, &styles, dom_tree.root) {
