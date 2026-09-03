@@ -93,38 +93,63 @@ pub enum PaintCommand {
         rect: Rect,
         color: Color,
         border_radius: f32,
+        is_fixed: bool,
     },
     DrawText {
         text: String,
         rect: Rect,
         color: Color,
         font_size: f32,
+        is_fixed: bool,
     },
     DrawImage {
         rect: Rect,
         src: String,
         alt: String,
+        is_fixed: bool,
     },
+}
+
+#[derive(Clone)]
+struct LayeredCommand {
+    cmd: PaintCommand,
+    z_index: i32,
+    order: usize,
 }
 
 pub fn build_display_list(
     layout_box: &LayoutBox,
     styles: &HashMap<usize, ComputedStyle>,
 ) -> Vec<PaintCommand> {
-    let mut list = Vec::new();
-    build_recursive(layout_box, styles, None, &mut list);
-    list
+    let mut items = Vec::new();
+    let mut order = 0;
+    build_recursive(layout_box, styles, None, false, 0, &mut items, &mut order);
+    items.sort_by(|a, b| a.z_index.cmp(&b.z_index).then(a.order.cmp(&b.order)));
+    items.into_iter().map(|item| item.cmd).collect()
 }
 
 fn build_recursive(
     lb: &LayoutBox,
     styles: &HashMap<usize, ComputedStyle>,
     parent_style: Option<&ComputedStyle>,
-    list: &mut Vec<PaintCommand>,
+    parent_is_fixed: bool,
+    parent_z_index: i32,
+    items: &mut Vec<LayeredCommand>,
+    order: &mut usize,
 ) {
     match lb.box_type {
         BoxType::Block(node_idx) => {
             let style = styles.get(&node_idx);
+
+            let is_fixed = style
+                .and_then(|s| s.get("position"))
+                .map(|p| p.trim().eq_ignore_ascii_case("fixed"))
+                .unwrap_or(parent_is_fixed);
+
+            let z_index = style
+                .and_then(|s| s.get("z-index"))
+                .and_then(|z| z.trim().parse::<i32>().ok())
+                .unwrap_or(parent_z_index);
 
             let border_radius = style
                 .and_then(|s| s.get("border-radius"))
@@ -133,17 +158,23 @@ fn build_recursive(
 
             // 0. Draw Box Shadow (Elevation)
             if let Some(s) = style {
-                if let Some(shadow_str) = s.get("box-shadow") {
+                if let Some(_shadow_str) = s.get("box-shadow") {
                     let shadow_color = parse_color("rgba(0, 0, 0, 0.35)").unwrap_or(Color::new(0.0, 0.0, 0.0, 0.35));
-                    list.push(PaintCommand::DrawRect {
-                        rect: Rect {
-                            x: lb.dimensions.padding_box().x + 2.0,
-                            y: lb.dimensions.padding_box().y + 4.0,
-                            width: lb.dimensions.padding_box().width,
-                            height: lb.dimensions.padding_box().height,
+                    *order += 1;
+                    items.push(LayeredCommand {
+                        cmd: PaintCommand::DrawRect {
+                            rect: Rect {
+                                x: lb.dimensions.padding_box().x + 2.0,
+                                y: lb.dimensions.padding_box().y + 4.0,
+                                width: lb.dimensions.padding_box().width,
+                                height: lb.dimensions.padding_box().height,
+                            },
+                            color: shadow_color,
+                            border_radius: border_radius + 2.0,
+                            is_fixed,
                         },
-                        color: shadow_color,
-                        border_radius: border_radius + 2.0,
+                        z_index,
+                        order: *order,
                     });
                 }
             }
@@ -153,10 +184,16 @@ fn build_recursive(
                 if let Some(bg_color_str) = s.get("background-color") {
                     if let Some(color) = parse_color(bg_color_str) {
                         if color.a > 0.0 {
-                            list.push(PaintCommand::DrawRect {
-                                rect: lb.dimensions.padding_box(),
-                                color,
-                                border_radius,
+                            *order += 1;
+                            items.push(LayeredCommand {
+                                cmd: PaintCommand::DrawRect {
+                                    rect: lb.dimensions.padding_box(),
+                                    color,
+                                    border_radius,
+                                    is_fixed,
+                                },
+                                z_index,
+                                order: *order,
                             });
                         }
                     }
@@ -173,62 +210,82 @@ fn build_recursive(
 
                 let border_box = lb.dimensions.border_box();
 
-                // Top Border
                 if border_width.top > 0.0 {
-                    list.push(PaintCommand::DrawRect {
-                        rect: Rect {
-                            x: border_box.x,
-                            y: border_box.y,
-                            width: border_box.width,
-                            height: border_width.top,
+                    *order += 1;
+                    items.push(LayeredCommand {
+                        cmd: PaintCommand::DrawRect {
+                            rect: Rect {
+                                x: border_box.x,
+                                y: border_box.y,
+                                width: border_box.width,
+                                height: border_width.top,
+                            },
+                            color,
+                            border_radius: 0.0,
+                            is_fixed,
                         },
-                        color,
-                        border_radius: 0.0,
+                        z_index,
+                        order: *order,
                     });
                 }
-                // Bottom Border
                 if border_width.bottom > 0.0 {
-                    list.push(PaintCommand::DrawRect {
-                        rect: Rect {
-                            x: border_box.x,
-                            y: border_box.y + border_box.height - border_width.bottom,
-                            width: border_box.width,
-                            height: border_width.bottom,
+                    *order += 1;
+                    items.push(LayeredCommand {
+                        cmd: PaintCommand::DrawRect {
+                            rect: Rect {
+                                x: border_box.x,
+                                y: border_box.y + border_box.height - border_width.bottom,
+                                width: border_box.width,
+                                height: border_width.bottom,
+                            },
+                            color,
+                            border_radius: 0.0,
+                            is_fixed,
                         },
-                        color,
-                        border_radius: 0.0,
+                        z_index,
+                        order: *order,
                     });
                 }
-                // Left Border
                 if border_width.left > 0.0 {
-                    list.push(PaintCommand::DrawRect {
-                        rect: Rect {
-                            x: border_box.x,
-                            y: border_box.y,
-                            width: border_width.left,
-                            height: border_box.height,
+                    *order += 1;
+                    items.push(LayeredCommand {
+                        cmd: PaintCommand::DrawRect {
+                            rect: Rect {
+                                x: border_box.x,
+                                y: border_box.y,
+                                width: border_width.left,
+                                height: border_box.height,
+                            },
+                            color,
+                            border_radius: 0.0,
+                            is_fixed,
                         },
-                        color,
-                        border_radius: 0.0,
+                        z_index,
+                        order: *order,
                     });
                 }
-                // Right Border
                 if border_width.right > 0.0 {
-                    list.push(PaintCommand::DrawRect {
-                        rect: Rect {
-                            x: border_box.x + border_box.width - border_width.right,
-                            y: border_box.y,
-                            width: border_width.right,
-                            height: border_box.height,
+                    *order += 1;
+                    items.push(LayeredCommand {
+                        cmd: PaintCommand::DrawRect {
+                            rect: Rect {
+                                x: border_box.x + border_box.width - border_width.right,
+                                y: border_box.y,
+                                width: border_width.right,
+                                height: border_box.height,
+                            },
+                            color,
+                            border_radius: 0.0,
+                            is_fixed,
                         },
-                        color,
-                        border_radius: 0.0,
+                        z_index,
+                        order: *order,
                     });
                 }
             }
 
             for child in &lb.children {
-                build_recursive(child, styles, style, list);
+                build_recursive(child, styles, style, is_fixed, z_index, items, order);
             }
         }
         BoxType::Anonymous => {
@@ -255,16 +312,22 @@ fn build_recursive(
                 let lines = crate::layout::engine::wrap_text(text, lb.dimensions.content.width, char_width);
 
                 for (idx, line) in lines.into_iter().enumerate() {
-                    list.push(PaintCommand::DrawText {
-                        text: line,
-                        rect: Rect {
-                            x: lb.dimensions.content.x,
-                            y: lb.dimensions.content.y + idx as f32 * line_height,
-                            width: lb.dimensions.content.width,
-                            height: line_height,
+                    *order += 1;
+                    items.push(LayeredCommand {
+                        cmd: PaintCommand::DrawText {
+                            text: line,
+                            rect: Rect {
+                                x: lb.dimensions.content.x,
+                                y: lb.dimensions.content.y + idx as f32 * line_height,
+                                width: lb.dimensions.content.width,
+                                height: line_height,
+                            },
+                            color,
+                            font_size,
+                            is_fixed: parent_is_fixed,
                         },
-                        color,
-                        font_size,
+                        z_index: parent_z_index,
+                        order: *order,
                     });
                 }
             }
@@ -296,13 +359,14 @@ mod tests {
             rect: Rect { x: 0.0, y: 0.0, width: 100.0, height: 100.0 },
             src: "logo.png".to_string(),
             alt: "Logo".to_string(),
+            is_fixed: false,
         };
         assert!(matches!(cmd, PaintCommand::DrawImage { .. }));
     }
 
     #[test]
     fn test_border_radius_display_list() {
-        let mut box_node = LayoutBox::new(BoxType::Block(0));
+        let box_node = LayoutBox::new(BoxType::Block(0));
         let mut styles = HashMap::new();
         let mut style = HashMap::new();
         style.insert("background-color".to_string(), "#1e293b".to_string());
@@ -315,6 +379,34 @@ mod tests {
             assert_eq!(*border_radius, 12.0);
         } else {
             panic!("Expected DrawRect with border_radius");
+        }
+    }
+
+    #[test]
+    fn test_z_index_display_ordering() {
+        let mut root = LayoutBox::new(BoxType::Block(0));
+        let child1 = LayoutBox::new(BoxType::Block(1));
+        let child2 = LayoutBox::new(BoxType::Block(2));
+        root.children.push(child1);
+        root.children.push(child2);
+
+        let mut styles = HashMap::new();
+        let mut style1 = HashMap::new();
+        style1.insert("background-color".to_string(), "red".to_string());
+        style1.insert("z-index".to_string(), "10".to_string());
+        styles.insert(1, style1);
+
+        let mut style2 = HashMap::new();
+        style2.insert("background-color".to_string(), "blue".to_string());
+        style2.insert("z-index".to_string(), "1".to_string());
+        styles.insert(2, style2);
+
+        let list = build_display_list(&root, &styles);
+        // child 2 (z-index 1) must be rendered before child 1 (z-index 10)
+        assert_eq!(list.len(), 2);
+        if let (PaintCommand::DrawRect { color: c1, .. }, PaintCommand::DrawRect { color: c2, .. }) = (&list[0], &list[1]) {
+            assert_eq!(*c1, Color::new(0.0, 0.0, 1.0, 1.0)); // blue
+            assert_eq!(*c2, Color::new(1.0, 0.0, 0.0, 1.0)); // red
         }
     }
 }

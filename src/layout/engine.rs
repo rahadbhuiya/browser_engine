@@ -196,8 +196,7 @@ fn layout_block(
         lb.dimensions.margin.right = half;
     }
 
-    // position: x is fixed relative to containing block's content box;
-    // y stacks below whatever has already been placed in containing block
+    // Normal flow placement relative to containing block
     lb.dimensions.content.x = containing_block.content.x
         + lb.dimensions.margin.left
         + lb.dimensions.border.left
@@ -207,6 +206,53 @@ fn layout_block(
         + lb.dimensions.margin.top
         + lb.dimensions.border.top
         + lb.dimensions.padding.top;
+
+    let position_mode = style
+        .and_then(|s| s.get("position"))
+        .map(|p| p.trim().to_ascii_lowercase())
+        .unwrap_or_else(|| "static".to_string());
+
+    let top_offset = style
+        .and_then(|s| s.get("top"))
+        .map(|v| parse_length(v, containing_block.content.height));
+    let left_offset = style
+        .and_then(|s| s.get("left"))
+        .map(|v| parse_length(v, containing_width));
+    let right_offset = style
+        .and_then(|s| s.get("right"))
+        .map(|v| parse_length(v, containing_width));
+
+    match position_mode.as_str() {
+        "fixed" => {
+            let x = left_offset.unwrap_or_else(|| {
+                if let Some(r) = right_offset {
+                    (containing_width - used_width - r).max(0.0)
+                } else {
+                    0.0
+                }
+            });
+            let y = top_offset.unwrap_or(0.0);
+            lb.dimensions.content.x = x + lb.dimensions.margin.left;
+            lb.dimensions.content.y = y + lb.dimensions.margin.top;
+        }
+        "absolute" => {
+            let x = left_offset.unwrap_or_else(|| {
+                if let Some(r) = right_offset {
+                    (containing_width - used_width - r).max(0.0)
+                } else {
+                    0.0
+                }
+            });
+            let y = top_offset.unwrap_or(0.0);
+            lb.dimensions.content.x = containing_block.content.x + x + lb.dimensions.margin.left;
+            lb.dimensions.content.y = containing_block.content.y + y + lb.dimensions.margin.top;
+        }
+        "relative" => {
+            lb.dimensions.content.x += left_offset.unwrap_or(0.0);
+            lb.dimensions.content.y += top_offset.unwrap_or(0.0);
+        }
+        _ => {}
+    }
 
     let display = style
         .and_then(|s| s.get("display"))
@@ -232,7 +278,20 @@ fn layout_block_children(lb: &mut LayoutBox, styles: &HashMap<usize, ComputedSty
     cursor.content.height = 0.0;
     for child in &mut lb.children {
         layout_box(child, cursor, styles);
-        cursor.content.height += child.dimensions.margin_box().height;
+        let is_out_of_flow = match child.box_type {
+            BoxType::Block(idx) => styles
+                .get(&idx)
+                .and_then(|s| s.get("position"))
+                .map(|p| {
+                    let s = p.trim().to_ascii_lowercase();
+                    s == "absolute" || s == "fixed"
+                })
+                .unwrap_or(false),
+            _ => false,
+        };
+        if !is_out_of_flow {
+            cursor.content.height += child.dimensions.margin_box().height;
+        }
     }
     cursor.content.height
 }

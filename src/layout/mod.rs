@@ -67,4 +67,30 @@ mod tests {
         assert_eq!(box_node.dimensions.margin.right, 300.0);
         assert_eq!(box_node.dimensions.content.x, 300.0);
     }
+
+    #[test]
+    fn test_position_absolute_and_fixed() {
+        let mut parent = LayoutBox::new(BoxType::Block(0));
+        let child_abs = LayoutBox::new(BoxType::Block(1));
+        parent.children.push(child_abs);
+
+        let mut styles = HashMap::new();
+        let mut parent_style = HashMap::new();
+        parent_style.insert("width".to_string(), "500px".to_string());
+        parent_style.insert("height".to_string(), "500px".to_string());
+        styles.insert(0, parent_style);
+
+        let mut abs_style = HashMap::new();
+        abs_style.insert("position".to_string(), "absolute".to_string());
+        abs_style.insert("left".to_string(), "50px".to_string());
+        abs_style.insert("top".to_string(), "30px".to_string());
+        abs_style.insert("width".to_string(), "100px".to_string());
+        styles.insert(1, abs_style);
+
+        layout_tree(&mut parent, 800.0, &styles);
+
+        let abs_box = &parent.children[0];
+        assert_eq!(abs_box.dimensions.content.x, 50.0);
+        assert_eq!(abs_box.dimensions.content.y, 30.0);
+    }
 }
