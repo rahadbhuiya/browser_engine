@@ -25,20 +25,57 @@ use render::RenderState;
 
 pub fn fetch_and_render_page(url_str: &str) -> (dom::Dom, Vec<paint::PaintCommand>) {
     let resolved_url = net::format_url_or_search_query(url_str);
-    let (html_content, _css_content) = if resolved_url.starts_with("http://") || resolved_url.starts_with("https://") {
+    let is_live_page = resolved_url.starts_with("http://") || resolved_url.starts_with("https://");
+
+    let html_content = if is_live_page {
         match net::fetch(&resolved_url) {
-            Ok(resp) => (resp.body_as_string(), "".to_string()),
-            Err(e) => (format!("<html><body><h1>Fetch Error</h1><p>{}</p></body></html>", e), "".to_string()),
+            Ok(resp) => resp.body_as_string(),
+            Err(e) => format!("<html><body><h1>Fetch Error</h1><p>{}</p></body></html>", e),
         }
     } else {
-        (
-            r#"<div class="page"><h1 class="title">Diaz's Secure Browser</h1><p>Type a search query or URL and press Enter to search!</p></div>"#.to_string(),
-            r#".page { width: 400px; padding: 10px; } .title { color: #00f; }"#.to_string(),
-        )
+        r#"<div class="page"><h1 class="title">Diaz's Secure Browser</h1><p>Type a search query or URL and press Enter to search!</p></div>"#.to_string()
     };
 
     let dom_tree = dom::build_dom(html::Tokenizer::new(&html_content).tokenize());
-    let stylesheet = css::CssParser::new(css::CssTokenizer::new("body { color: #333; }").tokenize()).parse();
+
+    // --- Batch A fix ---
+    // Previously the CSS the page actually shipped (inline <style> tags and
+    // <link rel="stylesheet"> files) was parsed into `_css_content` and then
+    // silently discarded; every page was rendered against a single hardcoded
+    // rule (`body { color: #333; }`). That meant no page's real styling ever
+    // reached the screen no matter what Batches 2-4 implemented downstream.
+    // We now collect real CSS from the page before building the stylesheet.
+    let mut css_source = String::new();
+
+    // 1. Inline <style> element contents.
+    css_source.push_str(&collect_inline_styles(&dom_tree));
+
+    // 2. External stylesheets discovered via <link rel="stylesheet">.
+    if is_live_page {
+        let discovered = net::discover_resources(&dom_tree, &resolved_url);
+        for sheet_url in discovered.stylesheets {
+            match net::fetch(&sheet_url) {
+                Ok(resp) => {
+                    css_source.push('\n');
+                    css_source.push_str(&resp.body_as_string());
+                }
+                Err(e) => {
+                    eprintln!("Warning: failed to fetch stylesheet {}: {}", sheet_url, e);
+                }
+            }
+        }
+    } else {
+        css_source.push_str(r#".page { width: 400px; padding: 10px; } .title { color: #00f; }"#);
+    }
+
+    // Baseline so a page that ships zero CSS still isn't completely bare;
+    // real page CSS is always concatenated *before* this so it always wins
+    // under source-order rules for equal specificity.
+    if css_source.trim().is_empty() {
+        css_source.push_str("body { color: #333; }");
+    }
+
+    let stylesheet = css::CssParser::new(css::CssTokenizer::new(&css_source).tokenize()).parse();
     let styles = style::compute_styles(&dom_tree, &stylesheet);
 
     let display_list = if let Some(mut layout_root) = layout::build_layout_tree(&dom_tree, &styles, dom_tree.root) {
@@ -51,67 +88,30 @@ pub fn fetch_and_render_page(url_str: &str) -> (dom::Dom, Vec<paint::PaintComman
     (dom_tree, display_list)
 }
 
+/// Walks the DOM collecting the text content of every `<style>` element,
+/// in document order, joined with newlines so cascade source-order between
+/// multiple `<style>` blocks is preserved.
+fn collect_inline_styles(dom: &dom::Dom) -> String {
+    let mut out = String::new();
+    for node in &dom.nodes {
+        if let dom::NodeType::Element(elem) = &node.node_type {
+            if elem.tag.eq_ignore_ascii_case("style") {
+                for &child_idx in &node.children {
+                    if let dom::NodeType::Text(text) = &dom.nodes[child_idx].node_type {
+                        out.push_str(text);
+                        out.push('\n');
+                    }
+                }
+            }
+        }
+    }
+    out
+}
+
 #[cfg(not(test))]
 fn main() {
-
-
-    let samples = [
-        r#"<!DOCTYPE html><html><body><h1 class="title">Hi Diaz</h1><p>where are you sonali</p><!-- comment --><br/></body></html>"#,
-        // malformed input on purpose -- tokenizer must not panic
-        r#"<div class=unclosed <p>broken <>< / ></div"#,
-    ];
-
-    for (i, sample) in samples.iter().enumerate() {
-        println!("--- HTML sample {} ---", i + 1);
-        let tokens = Tokenizer::new(sample).tokenize();
-        for t in tokens {
-            println!("{:?}", t);
-        }
-        println!();
-    }
-
-    let css_samples = [
-        r#"
-        body { font-family: sans-serif; color: #333; }
-        div.card > p.title { font-weight: bold; margin: 0 !important; }
-        #header, .nav a:hover { color: blue; }
-        @media (max-width: 600px) { .card { width: 100%; } }
-        "#,
-        // malformed CSS on purpose -- parser must not panic
-        r#"div { color ; background: red missing-brace"#,
-    ];
-
-    for (i, sample) in css_samples.iter().enumerate() {
-        println!("--- CSS sample {} ---", i + 1);
-        let tokens = CssTokenizer::new(sample).tokenize();
-        let stylesheet = CssParser::new(tokens).parse();
-        for rule in &stylesheet.rules {
-            for selector in &rule.selectors {
-                println!("selector {:?} specificity {:?}", selector, selector.specificity());
-            }
-            for decl in &rule.declarations {
-                println!("  {}: {}{}", decl.property, decl.value, if decl.important { " !important" } else { "" });
-            }
-        }
-        println!();
-    }
-
-    println!("--- Batch 3: DOM + style + layout end-to-end ---");
-    let html_doc = r#"<div class="page"><h1 class="title">Diaz's Browser</h1><p>Building from scratch.</p></div>"#;
-    let css_doc = r#"
-        .page { width: 400px; padding: 10px; }
-        .title { color: #222; margin: 0; }
-        p { margin: 8px 0; }
-    "#;
-
-    let dom_tree = build_dom(Tokenizer::new(html_doc).tokenize());
-    let stylesheet = CssParser::new(CssTokenizer::new(css_doc).tokenize()).parse();
-    let styles = compute_styles(&dom_tree, &stylesheet);
-
-    if let Some(mut layout_root) = build_layout_tree(&dom_tree, &styles, dom_tree.root) {
-        layout_tree(&mut layout_root, 800.0, &styles);
-        print_layout_box(&layout_root, 0);
-    }
+    println!("=== Diaz's Secure Browser Engine ===");
+    println!("Starting GPU-accelerated window...");
 
     use winit::{
         event::{Event, WindowEvent},
@@ -121,13 +121,11 @@ fn main() {
     };
     use std::sync::Arc;
 
-    println!("Starting GUI window for Batch 4...");
-
     let event_loop = EventLoop::new().unwrap();
     let window = Arc::new(
         WindowBuilder::new()
             .with_title("Diaz's Secure Browser Engine")
-            .with_inner_size(winit::dpi::PhysicalSize::new(800, 600))
+            .with_inner_size(winit::dpi::PhysicalSize::new(1024, 720))
             .build(&event_loop)
             .unwrap()
     );
@@ -166,24 +164,24 @@ fn main() {
                                 if context_menu.is_visible {
                                     if let Some(item) = context_menu.get_item_at_click(mx, my) {
                                         match item {
-                                            "⬅ Back" => {
+                                            "Back" => {
                                                 if let Some(prev) = tab_manager.active_tab_mut().history.go_back() {
                                                     address_bar.set_text(&prev);
                                                 }
                                             }
-                                            "➡ Forward" => {
+                                            "Forward" => {
                                                 if let Some(next) = tab_manager.active_tab_mut().history.go_forward() {
                                                     address_bar.set_text(&next);
                                                 }
                                             }
-                                            "🔄 Reload" => {
+                                            "Reload" => {
                                                 let target = address_bar.resolve_query();
                                                 println!("Reloading: {}", target);
                                             }
-                                            "📋 Copy URL" => {
-                                                println!("📋 URL Copied to clipboard: {}", tab_manager.active_tab().url);
+                                            "Copy URL" => {
+                                                println!("URL copied to clipboard: {}", tab_manager.active_tab().url);
                                             }
-                                            "🔍 Inspect Element" => {
+                                            "Inspect Element" => {
                                                 println!("\n=== DEVTOOLS DOM INSPECTOR ===");
                                             }
                                             _ => {}

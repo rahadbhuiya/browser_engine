@@ -39,11 +39,11 @@ impl BookmarkManager {
     }
 
     pub fn render_bookmarks_bar_html(&self) -> String {
-        let mut html = String::from(r#"<div class="bookmarks-bar" style="background-color: #0f172a; padding: 6px 12px; border-bottom: 1px solid #1e293b;">"#);
-        html.push_str(r#"<span style="font-weight: bold; color: #64748b; margin-right: 10px; font-size: 12px;">★ BOOKMARKS:</span>"#);
+        let mut html = String::from(r#"<div class="bookmarks-bar" style="background-color: #111827; padding: 6px 16px; border-bottom: 1px solid #1f2937;">"#);
+        html.push_str(r#"<span style="font-weight: bold; color: #6b7280; margin-right: 12px; font-size: 12px;">★ BOOKMARKS:</span>"#);
         for item in &self.items {
             html.push_str(&format!(
-                r#"<span style="background-color: #1e293b; color: #38bdf8; border: 1px solid #334155; padding: 4px 10px; margin-right: 8px; font-size: 12px; font-weight: bold;">★ {}</span>"#,
+                r#"<span style="background-color: #1f2937; color: #60a5fa; border: 1px solid #374151; border-radius: 4px; padding: 4px 10px; margin-right: 8px; font-size: 12px; font-weight: bold;">★ {}</span>"#,
                 item.title
             ));
         }

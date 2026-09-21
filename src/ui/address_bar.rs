@@ -66,15 +66,20 @@ impl AddressBar {
     }
 
     pub fn render_suggestions_html(&self) -> String {
+        let input = self.url_text.trim();
+        if input.is_empty() || input.starts_with("http://") || input.starts_with("https://") {
+            return String::new();
+        }
+
         let suggestions = self.generate_suggestions();
         if suggestions.is_empty() {
             return String::new();
         }
 
-        let mut html = String::from(r#"<div class="suggestions" style="background-color: #1e293b; border: 1px solid #475569; border-radius: 6px; padding: 4px; margin-top: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">"#);
+        let mut html = String::from(r#"<div class="suggestions" style="background-color: #111827; border: 1px solid #374151; border-radius: 8px; padding: 4px; margin-top: 4px; box-shadow: 0 8px 24px rgba(0,0,0,0.6);">"#);
         for item in &suggestions {
             html.push_str(&format!(
-                r#"<div style="padding: 6px 10px; color: #94a3b8; font-size: 13px; border-bottom: 1px solid #334155;">{}</div>"#,
+                r#"<div style="padding: 6px 12px; color: #cbd5e1; font-size: 13px; font-weight: bold; border-bottom: 1px solid #1f2937;">{}</div>"#,
                 item
             ));
         }

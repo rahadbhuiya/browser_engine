@@ -9,6 +9,29 @@ use super::http::{HttpRequest, HttpResponse};
 use super::url_parser::{ParsedUrl, Scheme};
 
 pub fn fetch(url_str: &str) -> Result<HttpResponse, String> {
+    fetch_with_redirect_limit(url_str, 5)
+}
+
+pub fn fetch_with_redirect_limit(initial_url: &str, max_redirects: usize) -> Result<HttpResponse, String> {
+    let mut current_url = initial_url.to_string();
+
+    for _ in 0..max_redirects {
+        let resp = fetch_single(&current_url)?;
+        if (300..400).contains(&resp.status_code) {
+            if let Some((_, location)) = resp.headers.iter().find(|(k, _)| k.eq_ignore_ascii_case("location")) {
+                let resolved = super::resource_loader::resolve_url(&current_url, location.trim());
+                println!("↪ Following redirect ({}) -> {}", resp.status_code, resolved);
+                current_url = resolved;
+                continue;
+            }
+        }
+        return Ok(resp);
+    }
+
+    fetch_single(&current_url)
+}
+
+fn fetch_single(url_str: &str) -> Result<HttpResponse, String> {
     let parsed_url = ParsedUrl::parse(url_str)?;
     let request = HttpRequest::new_get(&parsed_url.host, &parsed_url.path_and_query);
     let request_bytes = request.serialize().into_bytes();

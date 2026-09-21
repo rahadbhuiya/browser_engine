@@ -21,17 +21,14 @@ impl Tab {
             url: url.to_string(),
             page_body: format!(
                 r#"
-                <div class="card" style="background-color: #1e293b; padding: 20px; border-width: 2px; border-color: #6366f1;">
-                    <h2 style="color: #818cf8; font-size: 24px;">Welcome to Diaz's Browser Engine</h2>
-                    <p style="color: #94a3b8;">GPU-Accelerated • Native Rust HTML5/CSS3 Engine • Clickable Form Controls</p>
-                    <br/>
-                    <div style="background-color: #0f172a; padding: 14px; border-width: 1px; border-color: #38bdf8; margin-bottom: 12px;">
-                        <p style="color: #38bdf8; font-weight: bold;">🔍 INTERACTIVE FORM & SEARCH HUB</p>
-                        <p style="color: #cbd5e1;">Type any keywords or web address in the top Omnibox or click quick links below!</p>
-                    </div>
-                    <div style="background-color: #0f172a; padding: 10px; border-width: 1px; border-color: #6366f1;">
-                        <p style="color: #818cf8; font-weight: bold;">★ QUICK LINKS & ACTIONS:</p>
-                        <p style="color: #38bdf8; font-weight: bold;">[ Google Search ]  [ Rust Documentation ]  [ GitHub Repo ]</p>
+                <div style="background-color: #0b0f19; padding: 30px 16px; text-align: center;">
+                    <h1 style="color: #60a5fa; font-size: 32px; margin-bottom: 8px;">🌐 Diaz's Web Browser</h1>
+                    <p style="color: #9ca3af; font-size: 15px; margin-bottom: 24px;">Production-Ready Rust Browser Engine • GPU Accelerated • CSS3 & JS Runtime</p>
+                    
+                    <div class="card" style="background-color: #111827; border-radius: 12px; padding: 20px; border: 1px solid #1f2937; margin-bottom: 16px;">
+                        <p style="color: #38bdf8; font-weight: bold; font-size: 16px; margin-bottom: 10px;">⚡ SPEED DIAL & POPULAR SITES</p>
+                        <p style="color: #e2e8f0; font-size: 14px; margin: 8px 0;">[ 🔍 Google ]   [ 🐙 GitHub ]   [ 📺 YouTube ]   [ 🦀 Rust Docs ]   [ 📖 Wikipedia ]</p>
+                        <p style="color: #6b7280; font-size: 13px; margin-top: 10px;">Click any bookmark above or type in the Omnibox to navigate.</p>
                     </div>
                 </div>
                 "#
@@ -121,20 +118,19 @@ impl TabManager {
     }
 
     pub fn render_tab_strip_html(&self) -> String {
-        let mut html = String::from(r#"<div class="tab-strip" style="background-color: #0f172a; padding: 6px; border-bottom: 2px solid #334155;">"#);
+        let mut html = String::from(r#"<div class="tab-strip" style="background-color: #0b0f19; padding: 6px 16px 0 16px; border-bottom: 1px solid #1f2937;">"#);
         for (i, tab) in self.tabs.iter().enumerate() {
             let is_active = i == self.active_index;
-            let bg_color = if is_active { "#1e293b" } else { "#0f172a" };
-            let text_color = if is_active { "#38bdf8" } else { "#64748b" };
-            let border = if is_active { "2px solid #6366f1" } else { "1px solid #334155" };
+            let bg_color = if is_active { "#111827" } else { "#0b0f19" };
+            let text_color = if is_active { "#38bdf8" } else { "#9ca3af" };
+            let border = if is_active { "1px solid #374151" } else { "1px solid transparent" };
             
             html.push_str(&format!(
-                r#"<span style="background-color: {}; color: {}; border: {}; padding: 6px 14px; margin-right: 6px; font-weight: bold; font-size: 13px;">[{}] {}  [x]</span>"#,
+                r#"<span style="background-color: {}; color: {}; border: {}; border-radius: 6px 6px 0 0; padding: 6px 14px; margin-right: 4px; font-weight: bold; font-size: 13px;">[{}] {}  [x]</span>"#,
                 bg_color, text_color, border, i + 1, tab.title
             ));
         }
-        html.push_str(r#"<span style="background-color: #1e293b; color: #10b981; border: 1px solid #059669; padding: 6px 12px; font-weight: bold; font-size: 13px;">[+]</span>"#);
-        html.push_str(r#"<span style="color: #64748b; font-size: 12px; margin-left: 10px;">(ESC: Clear | Left/Right: Back/Forward)</span></div>"#);
+        html.push_str(r#"<span style="background-color: #1f2937; color: #10b981; border: 1px solid #374151; border-radius: 4px; padding: 4px 10px; font-weight: bold; font-size: 13px;">[+]</span></div>"#);
         html
     }
 

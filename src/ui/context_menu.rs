@@ -13,11 +13,11 @@ impl ContextMenu {
             x: 0.0,
             y: 0.0,
             items: vec![
-                "⬅ Back".to_string(),
-                "➡ Forward".to_string(),
-                "🔄 Reload".to_string(),
-                "📋 Copy URL".to_string(),
-                "🔍 Inspect Element".to_string(),
+                "Back".to_string(),
+                "Forward".to_string(),
+                "Reload".to_string(),
+                "Copy URL".to_string(),
+                "Inspect Element".to_string(),
             ],
         }
     }
