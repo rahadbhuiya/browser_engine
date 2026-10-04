@@ -1,6 +1,6 @@
 # Browser Engine
 
-[![CI](https://github.com/rahadbhuiya/browser_engine/actions/workflows/ci.yml/badge.svg)](https://github.com/rahadbhuiya/browser_engine/actions/workflows/ci.yml)
+[![CI](https://github.com/rahadbhuiya/browser_engine/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/rahadbhuiya/browser_engine/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Language: Rust 2021](https://img.shields.io/badge/Rust-2021-orange.svg)](https://www.rust-lang.org/)
 [![Graphics: wgpu](https://img.shields.io/badge/Graphics-wgpu-purple.svg)](https://wgpu.rs/)
