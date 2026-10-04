@@ -22,13 +22,13 @@ impl Tab {
             page_body: format!(
                 r#"
                 <div style="background-color: #0b0f19; padding: 30px 16px; text-align: center;">
-                    <h1 style="color: #60a5fa; font-size: 32px; margin-bottom: 8px;">🌐 Diaz's Web Browser</h1>
-                    <p style="color: #9ca3af; font-size: 15px; margin-bottom: 24px;">Production-Ready Rust Browser Engine • GPU Accelerated • CSS3 & JS Runtime</p>
+                    <h1 style="color: #60a5fa; font-size: 32px; margin-bottom: 8px;">Secure Rust Browser Engine</h1>
+                    <p style="color: #9ca3af; font-size: 15px; margin-bottom: 24px;">Modular Web Browser Engine Built from Scratch in Pure Rust | GPU Accelerated | Custom JS Runtime</p>
                     
                     <div class="card" style="background-color: #111827; border-radius: 12px; padding: 20px; border: 1px solid #1f2937; margin-bottom: 16px;">
-                        <p style="color: #38bdf8; font-weight: bold; font-size: 16px; margin-bottom: 10px;">⚡ SPEED DIAL & POPULAR SITES</p>
-                        <p style="color: #e2e8f0; font-size: 14px; margin: 8px 0;">[ 🔍 Google ]   [ 🐙 GitHub ]   [ 📺 YouTube ]   [ 🦀 Rust Docs ]   [ 📖 Wikipedia ]</p>
-                        <p style="color: #6b7280; font-size: 13px; margin-top: 10px;">Click any bookmark above or type in the Omnibox to navigate.</p>
+                        <p style="color: #38bdf8; font-weight: bold; font-size: 16px; margin-bottom: 10px;">SPEED DIAL & QUICK LINKS</p>
+                        <p style="color: #e2e8f0; font-size: 14px; margin: 8px 0;">[ Google ]   [ GitHub ]   [ YouTube ]   [ Rust Docs ]   [ Wikipedia ]</p>
+                        <p style="color: #6b7280; font-size: 13px; margin-top: 10px;">Type a URL or search query in the Omnibox above and press Enter to navigate.</p>
                     </div>
                 </div>
                 "#

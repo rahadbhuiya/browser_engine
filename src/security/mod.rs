@@ -61,10 +61,10 @@ mod tests {
         let mut db_mgr = IndexedDbManager::new();
         db_mgr.open_db("example.com", "MyDatabase", 1);
         db_mgr.create_object_store("example.com", "MyDatabase", "users");
-        db_mgr.put("example.com", "MyDatabase", "users", "user_101", "{\"name\": \"Diaz\"}");
+        db_mgr.put("example.com", "MyDatabase", "users", "user_101", "{\"name\": \"Alice\"}");
 
         let record = db_mgr.get("example.com", "MyDatabase", "users", "user_101");
-        assert_eq!(record, Some(&"{\"name\": \"Diaz\"}".to_string()));
+        assert_eq!(record, Some(&"{\"name\": \"Alice\"}".to_string()));
     }
 
     #[test]

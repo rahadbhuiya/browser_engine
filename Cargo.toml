@@ -2,8 +2,12 @@
 name = "browser_engine"
 version = "0.1.0"
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+authors = ["Rahad Bhuiya <rahadbhuiya2021@gmail.com>"]
+description = "A modular, GPU-accelerated, security-first web browser engine built from scratch in Rust."
+repository = "https://github.com/rahadbhuiya/browser_engine"
+license = "MIT"
+keywords = ["browser", "browser-engine", "rendering-engine", "wgpu", "rust"]
+categories = ["web-programming", "rendering"]
 
 [dependencies]
 wgpu = "23.0"

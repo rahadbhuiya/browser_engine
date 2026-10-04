@@ -33,7 +33,7 @@ pub fn fetch_and_render_page(url_str: &str) -> (dom::Dom, Vec<paint::PaintComman
             Err(e) => format!("<html><body><h1>Fetch Error</h1><p>{}</p></body></html>", e),
         }
     } else {
-        r#"<div class="page"><h1 class="title">Diaz's Secure Browser</h1><p>Type a search query or URL and press Enter to search!</p></div>"#.to_string()
+        r#"<div class="page"><h1 class="title">Secure Browser Engine</h1><p>Type a search query or URL and press Enter to search!</p></div>"#.to_string()
     };
 
     let dom_tree = dom::build_dom(html::Tokenizer::new(&html_content).tokenize());
