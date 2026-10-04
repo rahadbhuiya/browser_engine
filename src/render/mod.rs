@@ -331,7 +331,7 @@ impl RenderState {
                         corner_radius: 6.0,
                         _padding: [0.0; 3],
                     });
-                    let label = format!("🖼️ Image [{}]", if alt.is_empty() { "Graphic" } else { alt });
+                    let label = format!("Image [{}]", if alt.is_empty() { "Graphic" } else { alt });
                     text_sections.push((
                         label,
                         [rect.x + 8.0, y_pos + 8.0],

@@ -41,10 +41,10 @@ impl DownloadManager {
             return String::new();
         }
         let mut html = String::from(r#"<div class="downloads-bar" style="background-color: #0f172a; padding: 4px 12px; border-top: 1px solid #1e293b;">"#);
-        html.push_str(r#"<span style="font-weight: bold; color: #38bdf8; margin-right: 10px; font-size: 12px;">📥 DOWNLOADS:</span>"#);
+        html.push_str(r#"<span style="font-weight: bold; color: #38bdf8; margin-right: 10px; font-size: 12px;">DOWNLOADS:</span>"#);
         for item in &self.downloads {
             html.push_str(&format!(
-                r#"<span style="background-color: #1e293b; color: #4ade80; border: 1px solid #334155; padding: 2px 8px; margin-right: 6px; font-size: 12px;">✓ {} ({} B)</span>"#,
+                r#"<span style="background-color: #1e293b; color: #4ade80; border: 1px solid #334155; padding: 2px 8px; margin-right: 6px; font-size: 12px;">[OK] {} ({} B)</span>"#,
                 item.filename, item.bytes_downloaded
             ));
         }

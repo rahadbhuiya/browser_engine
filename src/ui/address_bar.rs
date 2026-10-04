@@ -51,14 +51,14 @@ impl AddressBar {
 
         for (keyword, url) in &popular_sites {
             if keyword.starts_with(&input) || input.contains(keyword) {
-                suggestions.push(format!("🌐 Visit: {}", url));
+                suggestions.push(format!("Visit: {}", url));
             }
         }
 
-        suggestions.push(format!("🔍 Google Search: \"{}\"", self.url_text));
+        suggestions.push(format!("Google Search: \"{}\"", self.url_text));
 
         if !input.contains('.') && !input.contains('/') {
-            suggestions.push(format!("🌐 https://www.{}.com", input));
+            suggestions.push(format!("https://www.{}.com", input));
         }
 
         suggestions.truncate(4);

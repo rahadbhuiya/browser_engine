@@ -150,10 +150,10 @@ mod tests {
         assert!(menu.is_visible);
 
         let item = menu.get_item_at_click(120.0, 110.0);
-        assert_eq!(item, Some("⬅ Back"));
+        assert_eq!(item, Some("Back"));
 
         let item2 = menu.get_item_at_click(120.0, 138.0);
-        assert_eq!(item2, Some("➡ Forward"));
+        assert_eq!(item2, Some("Forward"));
 
         let html = menu.render_html();
         assert!(html.contains("context-menu"));

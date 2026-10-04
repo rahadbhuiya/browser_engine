@@ -27,7 +27,7 @@ pub struct NotificationManager;
 
 impl NotificationManager {
     pub fn show_notification(title: &str, body: &str) -> NotificationItem {
-        println!("🔔 OS DESKTOP NOTIFICATION: [{}] {}", title, body);
+        println!("OS DESKTOP NOTIFICATION: [{}] {}", title, body);
         NotificationItem {
             title: title.to_string(),
             body: body.to_string(),

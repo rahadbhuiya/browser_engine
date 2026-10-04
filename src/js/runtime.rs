@@ -25,7 +25,7 @@ impl JsRuntime {
             return Ok(());
         }
 
-        println!("⚡ [JsRuntime] Executing script ({} bytes)", trimmed.len());
+        println!("[JsRuntime] Executing script ({} bytes)", trimmed.len());
 
         let tokens = JsLexer::new(trimmed).tokenize();
         let program = JsParser::new(tokens).parse();
