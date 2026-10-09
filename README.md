@@ -98,12 +98,18 @@ The engine does not rely on Chromium, WebKit, or Gecko internals. It implements 
 - **Omnibox Navigation:** URL normalization and search engine routing with interactive suggestion dropdowns.
 - **Right-Click Context Menu:** Native contextual operations: Back, Forward, Reload, Copy Page URL, and Inspect Element.
 
+### 9. Built-in DevTools & DOM Inspector
+- **Dock Panel [F12]:** Hardware-rendered diagnostic overlay supporting live tabbed panels: `Elements`, `Console`, `Network`, and `Performance`.
+- **Live DOM Inspector:** Recursive tree inspection with tag/attribute syntax highlighting, node IDs, and computed CSS box model dimensions.
+- **Diagnostic Logging:** Direct integration with JavaScript runtime execution logs and network waterfall requests.
+
 ---
 
 ## Keyboard Shortcuts & Controls
 
 | Shortcut / Action | Description |
 |-------------------|-------------|
+| `F12` | Toggle built-in DevTools Dock Panel (DOM Inspector, Console, Network) |
 | `Ctrl + T` | Open a new browser tab |
 | `Ctrl + W` | Close the active browser tab |
 | `Ctrl + R` / `F5` | Reload the current page |

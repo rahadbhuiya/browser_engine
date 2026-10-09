@@ -10,7 +10,7 @@ pub mod tab;
 pub use address_bar::AddressBar;
 pub use bookmarks::{Bookmark, BookmarkManager};
 pub use context_menu::ContextMenu;
-pub use devtools::DevTools;
+pub use devtools::{DevTools, DevToolsTab};
 pub use navbar::NavBarHistory;
 pub use tab::{Tab, TabManager};
 
@@ -162,6 +162,54 @@ mod tests {
         menu.hide();
         assert!(!menu.is_visible);
         assert_eq!(menu.get_item_at_click(120.0, 110.0), None);
+    }
+
+    #[test]
+    fn test_devtools_panel_state() {
+        let mut dt = DevTools::new();
+        assert!(!dt.is_open);
+        dt.toggle();
+        assert!(dt.is_open);
+        dt.select_tab(DevToolsTab::Console);
+        assert_eq!(dt.active_tab, DevToolsTab::Console);
+        dt.log("Test log entry");
+        assert!(dt.console_logs.contains(&"Test log entry".to_string()));
+        dt.record_network_request("POST", "https://api.example.com", 201);
+        assert!(dt.network_requests[0].contains("Status: 201"));
+        dt.close();
+        assert!(!dt.is_open);
+    }
+
+    #[test]
+    fn test_devtools_html_rendering() {
+        let mut dt = DevTools::new();
+        let html_input = "<html><body><main><p>Hello DevTools</p></main></body></html>";
+        let dom = crate::dom::build_dom(crate::html::Tokenizer::new(html_input).tokenize());
+
+        // Closed devtools renders empty string
+        assert_eq!(dt.render_html(&dom, "https://example.com"), "");
+
+        // Opened devtools renders panel
+        dt.open();
+        let panel_html = dt.render_html(&dom, "https://example.com");
+        assert!(panel_html.contains("devtools-panel"));
+        assert!(panel_html.contains("DEVTOOLS DOCK PANEL"));
+        assert!(panel_html.contains("Elements"));
+        assert!(panel_html.contains("Console"));
+        assert!(panel_html.contains("Hello DevTools"));
+
+        // Console tab rendering
+        dt.select_tab(DevToolsTab::Console);
+        dt.log("Kernel graphics context online");
+        let console_html = dt.render_html(&dom, "https://example.com");
+        assert!(console_html.contains("Kernel graphics context online"));
+
+        // Network tab rendering
+        dt.select_tab(DevToolsTab::Network);
+        dt.record_network_request("GET", "https://example.com/bundle.js", 200);
+        let net_html = dt.render_html(&dom, "https://example.com");
+        assert!(net_html.contains("bundle.js"));
+        assert!(net_html.contains("200 OK"));
     }
 }
 

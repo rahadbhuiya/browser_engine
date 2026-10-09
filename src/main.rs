@@ -136,6 +136,7 @@ fn main() {
     let bookmark_manager = ui::BookmarkManager::new();
     let download_manager = net::DownloadManager::new();
     let mut context_menu = ui::ContextMenu::new();
+    let mut devtools = ui::DevTools::new();
     let mut mouse_pos = (0.0f32, 0.0f32);
 
     event_loop.run(move |event, elwt| {
@@ -182,7 +183,8 @@ fn main() {
                                                 println!("URL copied to clipboard: {}", tab_manager.active_tab().url);
                                             }
                                             "Inspect Element" => {
-                                                println!("\n=== DEVTOOLS DOM INSPECTOR ===");
+                                                devtools.open();
+                                                println!("\n=== DEVTOOLS: Inspect Element Activated ===");
                                             }
                                             _ => {}
                                         }
@@ -304,7 +306,9 @@ fn main() {
                                     state.window.request_redraw();
                                 }
                                 Key::Named(NamedKey::F12) => {
+                                    devtools.toggle();
                                     println!("\n=== DEVTOOLS (F12) ===");
+                                    println!("Status: is_open={}", devtools.is_open);
                                     println!("Active URL: {}", tab_manager.active_tab().url);
                                     println!("Active Title: {}", tab_manager.active_tab().title);
                                     state.window.request_redraw();
@@ -340,6 +344,8 @@ fn main() {
                         let suggestions_bar = address_bar.render_suggestions_html();
                         let context_menu_html = context_menu.render_html();
                         let active_tab = tab_manager.active_tab();
+                        let temp_content_dom = build_dom(Tokenizer::new(&active_tab.page_body).tokenize());
+                        let devtools_html = devtools.render_html(&temp_content_dom, &active_tab.url);
 
                         let html_doc = format!(
                             r#"
@@ -356,6 +362,7 @@ fn main() {
                                 </div>
                                 {}
                                 {}
+                                {}
                             </div>
                             "#,
                             tab_strip,
@@ -364,7 +371,8 @@ fn main() {
                             bookmarks_bar,
                             active_tab.page_body,
                             downloads_bar,
-                            context_menu_html
+                            context_menu_html,
+                            devtools_html
                         );
 
                         let css_doc = r#"
@@ -375,6 +383,26 @@ fn main() {
                             .card { padding: 16px; background-color: #1e293b; border-width: 1px; border-color: #334155; margin-top: 8px; }
                             p { color: #cbd5e1; font-size: 15px; margin: 6px 0; }
                             h2 { color: #f8fafc; margin: 4px 0; }
+                            .devtools-panel { background-color: #020617; border-width: 2px; border-color: #38bdf8; padding: 10px; margin-top: 14px; }
+                            .devtools-title { color: #38bdf8; font-weight: bold; font-size: 13px; margin: 0 0 6px 0; }
+                            .devtools-tabs { margin-bottom: 8px; }
+                            .devtools-tab { color: #94a3b8; font-size: 12px; margin-right: 8px; font-weight: bold; }
+                            .devtools-tab-active { color: #38bdf8; font-weight: bold; }
+                            .devtools-subhead { color: #f8fafc; font-size: 12px; font-weight: bold; margin: 4px 0; }
+                            .devtools-code-box { background-color: #0f172a; padding: 8px; border-width: 1px; border-color: #1e293b; margin: 4px 0; }
+                            .devtools-node { color: #e2e8f0; font-size: 11px; margin: 2px 0; }
+                            .devtools-tag { color: #f43f5e; font-weight: bold; }
+                            .devtools-attr { color: #facc15; }
+                            .devtools-text-node { color: #4ade80; font-size: 11px; margin: 1px 0; }
+                            .devtools-comment { color: #64748b; font-size: 11px; margin: 1px 0; }
+                            .devtools-metric-label { color: #a855f7; font-size: 11px; margin-top: 6px; }
+                            .devtools-console-box { background-color: #0f172a; padding: 8px; border-width: 1px; border-color: #1e293b; }
+                            .devtools-console-entry { color: #38bdf8; font-size: 11px; margin: 2px 0; }
+                            .devtools-network { margin-top: 4px; }
+                            .devtools-net-box { background-color: #0f172a; padding: 8px; border-width: 1px; border-color: #1e293b; }
+                            .devtools-net-entry { color: #22c55e; font-size: 11px; margin: 2px 0; }
+                            .devtools-perf { margin-top: 4px; }
+                            .devtools-perf-item { color: #cbd5e1; font-size: 12px; margin: 3px 0; }
                         "#;
 
                         let dom_tree = build_dom(Tokenizer::new(&html_doc).tokenize());
