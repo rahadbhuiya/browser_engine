@@ -31,6 +31,15 @@ impl HttpRequest {
         }
     }
 
+    pub fn with_header(mut self, key: &str, value: &str) -> Self {
+        self.headers.insert(key.to_string(), value.to_string());
+        self
+    }
+
+    pub fn with_cookie(self, cookie_header: &str) -> Self {
+        self.with_header("Cookie", cookie_header)
+    }
+
     pub fn serialize(&self) -> String {
         let mut req = format!("{} {} HTTP/1.1\r\n", self.method, self.path);
         for (k, v) in &self.headers {

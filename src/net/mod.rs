@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 pub mod cache;
+pub mod cookie;
 pub mod downloader;
 pub mod fetch;
 pub mod http;
@@ -9,6 +10,7 @@ pub mod url_parser;
 pub mod websocket;
 
 pub use cache::{CacheEntry, CacheStorageManager, ServiceWorkerManager, ServiceWorkerRegistration};
+pub use cookie::{Cookie, CookieJar, SameSite};
 pub use downloader::{DownloadItem, DownloadManager};
 pub use fetch::fetch;
 pub use http::{HttpRequest, HttpResponse, UserAgentMode};
