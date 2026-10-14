@@ -150,7 +150,7 @@ impl CssParser {
         }
     }
 
-    fn parse_selector_list(&mut self) -> Option<Vec<Selector>> {
+    pub fn parse_selector_list(&mut self) -> Option<Vec<Selector>> {
         let mut selectors = Vec::new();
         loop {
             self.skip_whitespace();
@@ -167,7 +167,7 @@ impl CssParser {
         Some(selectors)
     }
 
-    fn parse_single_selector(&mut self) -> Option<Selector> {
+    pub fn parse_single_selector(&mut self) -> Option<Selector> {
         let mut steps = Vec::new();
         let first = self.parse_simple_selector()?;
         steps.push((None, first));
@@ -209,7 +209,9 @@ impl CssParser {
     fn starts_simple_selector(tok: Option<&CssToken>) -> bool {
         matches!(
             tok,
-            Some(CssToken::Ident(_)) | Some(CssToken::Hash(_)) | Some(CssToken::Delim('.'))
+            Some(CssToken::Ident(_))
+                | Some(CssToken::Hash(_))
+                | Some(CssToken::Delim('.'))
                 | Some(CssToken::Delim('*'))
         )
     }
@@ -303,7 +305,9 @@ impl CssParser {
         let mut value_tokens = Vec::new();
         loop {
             match self.peek() {
-                None | Some(CssToken::Eof) | Some(CssToken::Semicolon)
+                None
+                | Some(CssToken::Eof)
+                | Some(CssToken::Semicolon)
                 | Some(CssToken::RightBrace) => break,
                 Some(tok) => {
                     value_tokens.push(tok.clone());
@@ -395,5 +399,45 @@ impl CssParser {
             }
         }
         out.trim().to_string()
+    }
+}
+
+/// Convenience helper to parse a single CSS selector string.
+pub fn parse_selector(input: &str) -> Option<Selector> {
+    let tokens = crate::css::tokenizer::CssTokenizer::new(input).tokenize();
+    let mut parser = CssParser::new(tokens);
+    parser.parse_single_selector()
+}
+
+/// Convenience helper to parse a comma-separated CSS selector list.
+pub fn parse_selector_list(input: &str) -> Option<Vec<Selector>> {
+    let tokens = crate::css::tokenizer::CssTokenizer::new(input).tokenize();
+    let mut parser = CssParser::new(tokens);
+    parser.parse_selector_list()
+}
+
+#[cfg(test)]
+mod parser_tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_single_selector() {
+        let sel = parse_selector("div.content > p#intro").unwrap();
+        assert_eq!(sel.steps.len(), 2);
+        assert_eq!(sel.steps[0].1.tag.as_deref(), Some("div"));
+        assert_eq!(sel.steps[0].1.classes, vec!["content".to_string()]);
+        assert_eq!(sel.steps[1].0, Some(Combinator::Child));
+        assert_eq!(sel.steps[1].1.tag.as_deref(), Some("p"));
+        assert_eq!(sel.steps[1].1.id.as_deref(), Some("intro"));
+    }
+
+    #[test]
+    fn test_parse_selector_list() {
+        let list = parse_selector_list("h1, h2.title, #banner").unwrap();
+        assert_eq!(list.len(), 3);
+        assert_eq!(list[0].steps[0].1.tag.as_deref(), Some("h1"));
+        assert_eq!(list[1].steps[0].1.tag.as_deref(), Some("h2"));
+        assert_eq!(list[1].steps[0].1.classes, vec!["title".to_string()]);
+        assert_eq!(list[2].steps[0].1.id.as_deref(), Some("banner"));
     }
 }
