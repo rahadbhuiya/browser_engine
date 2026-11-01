@@ -90,4 +90,31 @@ mod tests {
         assert_eq!(dom.text_content(desc_all[0]), "First Card");
         assert_eq!(dom.text_content(desc_all[1]), "Second Card");
     }
+
+    #[test]
+    fn test_dom_query_selector_pseudo_classes() {
+        let html = r#"<ul id="list"><li>Item 1</li><li>Item 2</li><li>Item 3</li></ul><button disabled>Off</button><button id="btn" data-hover>Hover Me</button>"#;
+        let tokens = Tokenizer::new(html).tokenize();
+        let mut dom = build_dom(tokens);
+
+        let first = dom.query_selector("li:first-child").expect("first-child matches");
+        assert_eq!(dom.text_content(first), "Item 1");
+
+        let last = dom.query_selector("li:last-child").expect("last-child matches");
+        assert_eq!(dom.text_content(last), "Item 3");
+
+        let disabled_btn = dom.query_selector("button:disabled").expect("disabled matches");
+        assert_eq!(dom.text_content(disabled_btn), "Off");
+
+        let hovered_btn = dom.query_selector("button:hover").expect("hover matches");
+        assert_eq!(dom.element_at(hovered_btn).unwrap().id.as_deref(), Some("btn"));
+
+        let item2 = dom.query_selector_all("li")[1];
+        dom.set_hovered(item2, true);
+        assert!(crate::style::matching::matches_selector(
+            &dom,
+            item2,
+            &crate::css::parser::parse_selector("li:hover").unwrap()
+        ));
+    }
 }

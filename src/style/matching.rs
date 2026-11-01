@@ -85,7 +85,109 @@ fn matches_simple(dom: &Dom, node_idx: usize, simple: &SimpleSelector) -> bool {
             return false;
         }
     }
+    for pseudo in &simple.pseudo_classes {
+        if !matches_pseudo(dom, node_idx, element, pseudo) {
+            return false;
+        }
+    }
     // universal selector or bare tag/id/class combination: if we got here,
     // every constraint present on `simple` was satisfied
     true
+}
+
+fn matches_pseudo(
+    dom: &Dom,
+    node_idx: usize,
+    element: &crate::dom::ElementData,
+    pseudo: &crate::css::PseudoClass,
+) -> bool {
+    use crate::css::PseudoClass;
+    match pseudo {
+        PseudoClass::Hover => {
+            element.is_hovered
+                || element.has_attribute("data-hover")
+                || element.has_attribute("hover")
+        }
+        PseudoClass::Active => {
+            element.is_active
+                || element.has_attribute("data-active")
+                || element.has_attribute("active")
+        }
+        PseudoClass::Focus => {
+            element.is_focused
+                || element.has_attribute("data-focus")
+                || element.has_attribute("focus")
+        }
+        PseudoClass::FirstChild => {
+            if let Some(parent_idx) = dom.nodes.get(node_idx).and_then(|n| n.parent) {
+                if let Some(parent_node) = dom.nodes.get(parent_idx) {
+                    let first_elem = parent_node
+                        .children
+                        .iter()
+                        .find(|&&c| dom.element_at(c).is_some());
+                    return first_elem == Some(&node_idx);
+                }
+            }
+            false
+        }
+        PseudoClass::LastChild => {
+            if let Some(parent_idx) = dom.nodes.get(node_idx).and_then(|n| n.parent) {
+                if let Some(parent_node) = dom.nodes.get(parent_idx) {
+                    let last_elem = parent_node
+                        .children
+                        .iter()
+                        .rev()
+                        .find(|&&c| dom.element_at(c).is_some());
+                    return last_elem == Some(&node_idx);
+                }
+            }
+            false
+        }
+        PseudoClass::OnlyChild => {
+            if let Some(parent_idx) = dom.nodes.get(node_idx).and_then(|n| n.parent) {
+                if let Some(parent_node) = dom.nodes.get(parent_idx) {
+                    let elem_count = parent_node
+                        .children
+                        .iter()
+                        .filter(|&&c| dom.element_at(c).is_some())
+                        .count();
+                    return elem_count == 1;
+                }
+            }
+            false
+        }
+        PseudoClass::Root => {
+            node_idx == dom.root
+                || dom.nodes.get(node_idx).and_then(|n| n.parent) == Some(dom.root)
+                || element.tag.eq_ignore_ascii_case("html")
+        }
+        PseudoClass::Empty => {
+            if let Some(node) = dom.nodes.get(node_idx) {
+                node.children.is_empty()
+                    || node.children.iter().all(|&c| {
+                        match &dom.nodes[c].node_type {
+                            crate::dom::NodeType::Comment(_) => true,
+                            crate::dom::NodeType::Text(t) => t.trim().is_empty(),
+                            _ => false,
+                        }
+                    })
+            } else {
+                false
+            }
+        }
+        PseudoClass::Checked => {
+            element.has_attribute("checked") || element.has_attribute("selected")
+        }
+        PseudoClass::Disabled => element.has_attribute("disabled"),
+        PseudoClass::Enabled => {
+            let is_form_element = matches!(
+                element.tag.as_str(),
+                "input" | "button" | "select" | "textarea" | "optgroup" | "option"
+            );
+            is_form_element && !element.has_attribute("disabled")
+        }
+        PseudoClass::Other(name) => {
+            element.has_attribute(name) || element.has_attribute(&format!("data-{}", name))
+        }
+    }
 }

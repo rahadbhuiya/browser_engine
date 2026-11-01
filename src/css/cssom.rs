@@ -33,12 +33,65 @@ pub enum Combinator {
     SubsequentSibling, // "a ~ b"
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum PseudoClass {
+    Hover,
+    Active,
+    Focus,
+    FirstChild,
+    LastChild,
+    OnlyChild,
+    Root,
+    Empty,
+    Checked,
+    Disabled,
+    Enabled,
+    Other(String),
+}
+
+impl PseudoClass {
+    pub fn from_name(name: &str) -> Self {
+        match name.to_ascii_lowercase().as_str() {
+            "hover" => PseudoClass::Hover,
+            "active" => PseudoClass::Active,
+            "focus" => PseudoClass::Focus,
+            "first-child" => PseudoClass::FirstChild,
+            "last-child" => PseudoClass::LastChild,
+            "only-child" => PseudoClass::OnlyChild,
+            "root" => PseudoClass::Root,
+            "empty" => PseudoClass::Empty,
+            "checked" => PseudoClass::Checked,
+            "disabled" => PseudoClass::Disabled,
+            "enabled" => PseudoClass::Enabled,
+            other => PseudoClass::Other(other.to_string()),
+        }
+    }
+
+    pub fn as_str(&self) -> &str {
+        match self {
+            PseudoClass::Hover => "hover",
+            PseudoClass::Active => "active",
+            PseudoClass::Focus => "focus",
+            PseudoClass::FirstChild => "first-child",
+            PseudoClass::LastChild => "last-child",
+            PseudoClass::OnlyChild => "only-child",
+            PseudoClass::Root => "root",
+            PseudoClass::Empty => "empty",
+            PseudoClass::Checked => "checked",
+            PseudoClass::Disabled => "disabled",
+            PseudoClass::Enabled => "enabled",
+            PseudoClass::Other(s) => s.as_str(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct SimpleSelector {
     pub universal: bool,
     pub tag: Option<String>,
     pub id: Option<String>,
     pub classes: Vec<String>,
+    pub pseudo_classes: Vec<PseudoClass>,
 }
 
 /// (id_count, class_count, type_count) — CSS specificity, per
@@ -52,7 +105,7 @@ impl Selector {
             if simple.id.is_some() {
                 spec.0 += 1;
             }
-            spec.1 += simple.classes.len() as u32;
+            spec.1 += (simple.classes.len() + simple.pseudo_classes.len()) as u32;
             if simple.tag.is_some() {
                 spec.2 += 1;
             }

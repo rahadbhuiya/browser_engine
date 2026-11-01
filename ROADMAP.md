@@ -33,10 +33,7 @@ depending on Chromium/WebKit/Gecko internals.
 - [x] Cascade: specificity (id/class/type counts), `!important`, source order preserved
 - [x] Combinators: descendant, child (`>`), next-sibling (`+`), subsequent-sibling (`~`)
 - [x] At-rules (`@media`, etc.) recognized and safely skipped as whole blocks
-- [ ] Pseudo-classes (`:hover`, `:nth-child`, ...) — not yet supported; an
-      unsupported selector currently causes the *whole rule* to be dropped
-      cleanly rather than misparsed. Revisit when building selector matching
-      in Batch 3.
+- [x] Pseudo-classes (`:hover`, `:active`, `:focus`, `:first-child`, `:last-child`, `:only-child`, `:empty`, `:root`, `:checked`, `:disabled`, `:enabled`) supported in tokenizer, parser, CSSOM, specificity resolution, and selector matching engine
 
 ### Batch 3 — Style Resolution + Layout Engine (2-3 months)  done
 - [x] Selector matching (right-to-left, walks ancestors/siblings via the DOM arena)
