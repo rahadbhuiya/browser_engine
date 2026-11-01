@@ -647,7 +647,7 @@ mod css_tests {
 
     #[test]
     fn malformed_selector_drops_whole_rule_cleanly() {
-        let sheet = parse("div > { color: blue; } p { margin: 0; }");
+        let sheet = parse("div [unsupported] { color: blue; } p { margin: 0; }");
         assert_eq!(sheet.rules.len(), 1);
         assert_eq!(sheet.rules[0].declarations[0].property, "margin");
     }
