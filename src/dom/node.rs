@@ -20,6 +20,9 @@ pub struct ElementData {
     pub attributes: Vec<(String, String)>,
     pub id: Option<String>,
     pub classes: Vec<String>,
+    pub is_hovered: bool,
+    pub is_focused: bool,
+    pub is_active: bool,
 }
 
 impl ElementData {
@@ -42,6 +45,9 @@ impl ElementData {
             attributes,
             id,
             classes,
+            is_hovered: false,
+            is_focused: false,
+            is_active: false,
         }
     }
 
@@ -60,6 +66,18 @@ impl ElementData {
 
     pub fn has_class(&self, class: &str) -> bool {
         self.classes.iter().any(|c| c == class)
+    }
+
+    pub fn set_hovered(&mut self, hovered: bool) {
+        self.is_hovered = hovered;
+    }
+
+    pub fn set_focused(&mut self, focused: bool) {
+        self.is_focused = focused;
+    }
+
+    pub fn set_active(&mut self, active: bool) {
+        self.is_active = active;
     }
 }
 
@@ -81,6 +99,31 @@ impl Dom {
         match &self.nodes.get(idx)?.node_type {
             NodeType::Element(e) => Some(e),
             _ => None,
+        }
+    }
+
+    pub fn element_at_mut(&mut self, idx: usize) -> Option<&mut ElementData> {
+        match &mut self.nodes.get_mut(idx)?.node_type {
+            NodeType::Element(e) => Some(e),
+            _ => None,
+        }
+    }
+
+    pub fn set_hovered(&mut self, idx: usize, hovered: bool) {
+        if let Some(elem) = self.element_at_mut(idx) {
+            elem.set_hovered(hovered);
+        }
+    }
+
+    pub fn set_focused(&mut self, idx: usize, focused: bool) {
+        if let Some(elem) = self.element_at_mut(idx) {
+            elem.set_focused(focused);
+        }
+    }
+
+    pub fn set_active(&mut self, idx: usize, active: bool) {
+        if let Some(elem) = self.element_at_mut(idx) {
+            elem.set_active(active);
         }
     }
 

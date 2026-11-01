@@ -8,7 +8,7 @@
 // a browser that chokes on the first one it doesn't support is a security and
 // robustness problem, not just a missing-feature problem.
 
-use super::cssom::{Combinator, Declaration, Rule, Selector, SimpleSelector, Stylesheet};
+use super::cssom::{Combinator, Declaration, PseudoClass, Rule, Selector, SimpleSelector, Stylesheet};
 use super::token::CssToken;
 
 pub struct CssParser {
@@ -213,6 +213,7 @@ impl CssParser {
                 | Some(CssToken::Hash(_))
                 | Some(CssToken::Delim('.'))
                 | Some(CssToken::Delim('*'))
+                | Some(CssToken::Colon)
         )
     }
 
@@ -245,6 +246,22 @@ impl CssParser {
                         matched_anything = true;
                     } else {
                         // malformed "." with nothing after — recover by stopping
+                        break;
+                    }
+                }
+                Some(CssToken::Colon) => {
+                    self.pos += 1;
+                    // Optional double colon `::` for pseudo-elements (tolerant parsing)
+                    if matches!(self.peek(), Some(CssToken::Colon)) {
+                        self.pos += 1;
+                    }
+                    if let Some(CssToken::Ident(pseudo)) = self.peek() {
+                        let pc = PseudoClass::from_name(pseudo);
+                        simple.pseudo_classes.push(pc);
+                        self.pos += 1;
+                        matched_anything = true;
+                    } else {
+                        // malformed ":" with nothing after — recover by stopping
                         break;
                     }
                 }
@@ -439,5 +456,21 @@ mod parser_tests {
         assert_eq!(list[1].steps[0].1.tag.as_deref(), Some("h2"));
         assert_eq!(list[1].steps[0].1.classes, vec!["title".to_string()]);
         assert_eq!(list[2].steps[0].1.id.as_deref(), Some("banner"));
+    }
+
+    #[test]
+    fn test_parse_pseudo_classes() {
+        let sel = parse_selector("a:hover, button:first-child:focus").unwrap();
+        assert_eq!(sel.steps[0].1.tag.as_deref(), Some("a"));
+        assert_eq!(sel.steps[0].1.pseudo_classes, vec![PseudoClass::Hover]);
+
+        let sel2 = parse_selector("button:first-child:focus").unwrap();
+        assert_eq!(sel2.steps[0].1.tag.as_deref(), Some("button"));
+        assert_eq!(
+            sel2.steps[0].1.pseudo_classes,
+            vec![PseudoClass::FirstChild, PseudoClass::Focus]
+        );
+        // Specificity: tag (1) + 2 pseudo-classes (2) = (0, 2, 1)
+        assert_eq!(sel2.specificity(), (0, 2, 1));
     }
 }

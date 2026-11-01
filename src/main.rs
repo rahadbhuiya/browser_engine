@@ -631,24 +631,25 @@ mod css_tests {
     }
 
     #[test]
-    fn unsupported_pseudo_class_drops_whole_rule_cleanly() {
-        // Regression test: `:hover` isn't supported yet. Earlier the parser
-        // leaked the stray "hover" identifier into a bogus new rule and
-        // silently swallowed the *next* rule's declaration block. The fix
-        // drops the whole unsupported rule as one unit so nothing else on
-        // the stylesheet gets corrupted.
-        let sheet = parse("#header, .nav a:hover { color: blue; } p { margin: 0; }");
-        // only the trailing supported rule should survive
+    fn parses_pseudo_classes() {
+        let sheet = parse("#header, .nav a:hover { color: blue; } p:first-child { margin: 0; }");
+        assert_eq!(sheet.rules.len(), 2);
+        assert_eq!(sheet.rules[0].declarations[0].property, "color");
+        let hover_sel = &sheet.rules[0].selectors[1];
+        assert_eq!(hover_sel.steps[1].1.tag.as_deref(), Some("a"));
+        assert_eq!(
+            hover_sel.steps[1].1.pseudo_classes,
+            vec![super::css::PseudoClass::Hover]
+        );
+        // Specificity of `.nav a:hover`: 1 class (.nav) + 1 pseudo-class (:hover) + 1 tag (a) = (0, 2, 1)
+        assert_eq!(hover_sel.specificity(), (0, 2, 1));
+    }
+
+    #[test]
+    fn malformed_selector_drops_whole_rule_cleanly() {
+        let sheet = parse("div [unsupported] { color: blue; } p { margin: 0; }");
         assert_eq!(sheet.rules.len(), 1);
         assert_eq!(sheet.rules[0].declarations[0].property, "margin");
-        // critically, no bogus rule with tag "hover" should appear
-        for rule in &sheet.rules {
-            for selector in &rule.selectors {
-                for (_, simple) in &selector.steps {
-                    assert_ne!(simple.tag.as_deref(), Some("hover"));
-                }
-            }
-        }
     }
 
     #[test]
