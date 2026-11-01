@@ -1,5 +1,7 @@
 # Browser Engine
 
+[![Crates.io](https://img.shields.io/crates/v/browser_engine.svg)](https://crates.io/crates/browser_engine)
+[![Documentation](https://docs.rs/browser_engine/badge.svg)](https://docs.rs/browser_engine)
 [![CI](https://github.com/rahadbhuiya/browser_engine/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/rahadbhuiya/browser_engine/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Language: Rust 2021](https://img.shields.io/badge/Rust-2021-orange.svg)](https://www.rust-lang.org/)
