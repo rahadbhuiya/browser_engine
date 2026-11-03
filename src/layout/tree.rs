@@ -1,13 +1,13 @@
-// Batch 3 — Layout tree construction
+// Batch 3 â€” Layout tree construction
 //
 // Walks the styled DOM and produces a tree of LayoutBoxes: one Block box per
 // block-level element, and an "anonymous" box wrapping each run of inline
-// content (text, inline elements) found between block-level children —
+// content (text, inline elements) found between block-level children â€”
 // the same technique real engines use so inline content always has a box
 // to be laid out in, even when it has no element of its own.
 //
 // SIMPLIFICATION: inline elements (e.g. <span>, <a>) are not yet given their
-// own inline boxes — their text is flattened into the surrounding run. Proper
+// own inline boxes â€” their text is flattened into the surrounding run. Proper
 // inline-level boxes (needed for e.g. styling just the <a> text) are future
 // work once real text shaping (Batch 4+) is in place.
 
@@ -101,6 +101,19 @@ impl LayoutBox {
             }
         }
         None
+    }
+    /// Returns the total rendered document height in CSS pixels.
+    /// Used to compute the maximum scroll offset: max_scroll = doc_height - viewport_height.
+    pub fn total_document_height(&self) -> f32 {
+        let mb = self.dimensions.margin_box();
+        let mut max_y = mb.y + mb.height;
+        for child in &self.children {
+            let child_max = child.total_document_height();
+            if child_max > max_y {
+                max_y = child_max;
+            }
+        }
+        max_y
     }
 }
 

@@ -77,6 +77,7 @@ depending on Chromium/WebKit/Gecko internals.
 - [x] Tab management, address bar, navigation history
 - [x] Live URL fetching integration
 - [x] Interactive hyperlink navigation: click `<a>` elements to navigate directly within active tab
+- [x] Smooth mouse-wheel scrolling with inertia momentum and viewport clamping (Issue #3)
 - [ ] Per-site permission prompts (camera/mic/location)
 - [ ] Privacy dashboard (what's blocked, per-origin storage view)
 
@@ -98,7 +99,7 @@ page rendering works, to keep motivation and momentum.
 7. **Batch 7 (Multi-process IPC Security, SOP & CSP Enforcer)** — Completed
 8. **Batch 8 (Browser Shell, Visual Multi-Tab Bar, Navigation History & Bookmarks)** — Completed
 
-All **45 unit tests** are passing cleanly with 100% test suite success!
+All **52 unit tests** are passing cleanly with 100% test suite success!
 
 
 
