@@ -111,7 +111,7 @@ fn main() {
 
     use std::sync::Arc;
     use winit::{
-        event::{Event, WindowEvent},
+        event::{Event, MouseScrollDelta, WindowEvent},
         event_loop::EventLoop,
         keyboard::{Key, NamedKey},
         window::WindowBuilder,
@@ -135,6 +135,8 @@ fn main() {
     let mut devtools = ui::DevTools::new();
     let mut mouse_pos = (0.0f32, 0.0f32);
     let mut current_layout_root: Option<layout::LayoutBox> = None;
+    /// Total rendered document height in pixels (updated each RedrawRequested).
+    let mut document_height: f32 = 0.0;
 
     event_loop.run(move |event, elwt| {
         match event {
@@ -151,6 +153,19 @@ fn main() {
                     }
                     WindowEvent::CursorMoved { position, .. } => {
                         mouse_pos = (position.x as f32, position.y as f32);
+                    }
+                    WindowEvent::MouseWheel { delta, .. } => {
+                        // Convert raw wheel delta to pixels.
+                        // LineDelta: multiply by a comfortable line-height (40 px/line).
+                        // PixelDelta: use the physical y component directly.
+                        let delta_y = match delta {
+                            MouseScrollDelta::LineDelta(_, rows) => rows * 40.0,
+                            MouseScrollDelta::PixelDelta(pos) => pos.y as f32,
+                        };
+                        let viewport_h = state.size.height as f32;
+                        let max_scroll = (document_height - viewport_h).max(0.0);
+                        tab_manager.active_tab_mut().apply_wheel_delta(delta_y, max_scroll);
+                        state.window.request_redraw();
                     }
                     WindowEvent::MouseInput { state: element_state, button, .. } => {
                         if element_state == winit::event::ElementState::Pressed {
@@ -464,9 +479,22 @@ fn main() {
                             let viewport_width = state.size.width as f32;
                             layout_tree(&mut layout_root, viewport_width, &styles);
 
+                            // Update document height, clamp scroll, and advance the
+                            // smooth-scroll animation.
+                            document_height = layout_root.total_document_height();
+                            let viewport_h = state.size.height as f32;
+                            let max_scroll = (document_height - viewport_h).max(0.0);
+                            {
+                                let tab = tab_manager.active_tab_mut();
+                                tab.clamp_scroll(max_scroll);
+                                if tab.tick_scroll() {
+                                    state.window.request_redraw();
+                                }
+                            }
                             let paint_commands = paint::build_display_list(&layout_root, &styles);
                             current_layout_root = Some(layout_root);
-                            if let Err(e) = state.render(&paint_commands, active_tab.scroll_y) {
+                            let scroll_y = tab_manager.active_tab().scroll_y;
+                            if let Err(e) = state.render(&paint_commands, scroll_y) {
                                 eprintln!("Render error: {:?}", e);
                             }
                         }
