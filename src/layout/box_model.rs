@@ -19,6 +19,10 @@ impl Rect {
             height: self.height + edge.top + edge.bottom,
         }
     }
+
+    pub fn contains(&self, px: f32, py: f32) -> bool {
+        px >= self.x && px <= self.x + self.width && py >= self.y && py <= self.y + self.height
+    }
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
