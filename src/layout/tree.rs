@@ -35,6 +35,8 @@ pub struct LayoutBox {
     pub children: Vec<LayoutBox>,
     /// Only set on Anonymous boxes: the flattened inline text they contain.
     pub text_content: Option<String>,
+    /// Hyperlink destination URL if this box represents an <a> anchor element.
+    pub link_url: Option<String>,
 }
 
 impl LayoutBox {
@@ -44,6 +46,7 @@ impl LayoutBox {
             box_type,
             children: vec![],
             text_content: None,
+            link_url: None,
         }
     }
     pub fn new_block(node_idx: usize) -> Self {
@@ -55,7 +58,49 @@ impl LayoutBox {
             box_type: BoxType::Anonymous,
             children: vec![],
             text_content: Some(text),
+            link_url: None,
         }
+    }
+    pub fn new_inline_link(text: String, href: String) -> Self {
+        LayoutBox {
+            dimensions: Dimensions::default(),
+            box_type: BoxType::Anonymous,
+            children: vec![],
+            text_content: Some(text),
+            link_url: Some(href),
+        }
+    }
+
+    /// Recursively performs 2D point hit-testing against this box and its children.
+    /// Traverses children in reverse document order (top-most rendered first)
+    /// and returns the innermost LayoutBox whose border-box contains (x, y).
+    pub fn hit_test(&self, x: f32, y: f32) -> Option<&LayoutBox> {
+        for child in self.children.iter().rev() {
+            if let Some(hit) = child.hit_test(x, y) {
+                return Some(hit);
+            }
+        }
+        if self.dimensions.border_box().contains(x, y) {
+            Some(self)
+        } else {
+            None
+        }
+    }
+
+    /// Recursively hit-tests this layout tree to find the hyperlink target URL (href)
+    /// at viewport coordinates (x, y).
+    pub fn hit_test_link(&self, x: f32, y: f32) -> Option<&str> {
+        for child in self.children.iter().rev() {
+            if let Some(url) = child.hit_test_link(x, y) {
+                return Some(url);
+            }
+        }
+        if self.dimensions.border_box().contains(x, y) {
+            if let Some(ref url) = self.link_url {
+                return Some(url.as_str());
+            }
+        }
+        None
     }
 }
 
@@ -111,6 +156,15 @@ pub fn build_layout_tree(
     }
 
     let mut layout_box = LayoutBox::new_block(node_idx);
+
+    if let NodeType::Element(el) = &dom.nodes[node_idx].node_type {
+        if el.tag.eq_ignore_ascii_case("a") {
+            if let Some(href) = el.get_attribute("href") {
+                layout_box.link_url = Some(href.to_string());
+            }
+        }
+    }
+
     let mut pending_inline = String::new();
 
     for &child_idx in &dom.nodes[node_idx].children {
@@ -120,7 +174,7 @@ pub fn build_layout_tree(
                     pending_inline.push_str(t);
                 }
             }
-            NodeType::Element(_) => {
+            NodeType::Element(el) => {
                 if is_display_none(child_idx, styles) {
                     continue;
                 }
@@ -129,6 +183,13 @@ pub fn build_layout_tree(
                     if let Some(child_box) = build_layout_tree(dom, styles, child_idx) {
                         layout_box.children.push(child_box);
                     }
+                } else if el.tag.eq_ignore_ascii_case("a") {
+                    flush_inline_run(&mut pending_inline, &mut layout_box);
+                    let mut link_text = String::new();
+                    collect_inline_text(dom, child_idx, &mut link_text);
+                    let href = el.get_attribute("href").unwrap_or("").to_string();
+                    let link_box = LayoutBox::new_inline_link(link_text, href);
+                    layout_box.children.push(link_box);
                 } else {
                     collect_inline_text(dom, child_idx, &mut pending_inline);
                 }
@@ -143,9 +204,11 @@ pub fn build_layout_tree(
 
 fn flush_inline_run(pending_inline: &mut String, layout_box: &mut LayoutBox) {
     if !pending_inline.trim().is_empty() {
-        layout_box
-            .children
-            .push(LayoutBox::new_anonymous_text(std::mem::take(pending_inline)));
+        let mut text_box = LayoutBox::new_anonymous_text(std::mem::take(pending_inline));
+        if layout_box.link_url.is_some() {
+            text_box.link_url = layout_box.link_url.clone();
+        }
+        layout_box.children.push(text_box);
     } else {
         pending_inline.clear();
     }

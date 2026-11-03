@@ -19,6 +19,10 @@ impl Rect {
             height: self.height + edge.top + edge.bottom,
         }
     }
+
+    pub fn contains(&self, px: f32, py: f32) -> bool {
+        px >= self.x && px <= self.x + self.width && py >= self.y && py <= self.y + self.height
+    }
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
@@ -46,5 +50,27 @@ impl Dimensions {
     }
     pub fn margin_box(&self) -> Rect {
         self.border_box().expanded_by(self.margin)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_rect_contains_point() {
+        let rect = Rect {
+            x: 10.0,
+            y: 20.0,
+            width: 100.0,
+            height: 50.0,
+        };
+        assert!(rect.contains(10.0, 20.0));
+        assert!(rect.contains(110.0, 70.0));
+        assert!(rect.contains(50.0, 40.0));
+        assert!(!rect.contains(9.9, 20.0));
+        assert!(!rect.contains(10.0, 19.9));
+        assert!(!rect.contains(110.1, 50.0));
+        assert!(!rect.contains(50.0, 70.1));
     }
 }
