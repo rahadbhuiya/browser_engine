@@ -48,8 +48,8 @@ depending on Chromium/WebKit/Gecko internals.
       average-character-width heuristic (`AVG_CHAR_WIDTH_PX`/`LINE_HEIGHT_PX`
       in `layout/engine.rs`), not real font metrics. This is a known,
       documented approximation until HarfBuzz/font integration in a later batch.
-- [ ] Inline elements (`<span>`, `<a>`, ...) don't get their own boxes yet —
-      their text is flattened into the surrounding run
+- [x] Inline `<a>` link elements: bounding box geometry computation, 2D hit-testing, and interactive hyperlink navigation
+- [ ] Remaining inline elements (`<span>`, `<b>`, ...) flattened into surrounding runs
 
 ### Batch 4 — Paint + Compositor (1-1.5 months)  done
 - [x] Layout tree → paint command list (rects, text runs, images)
@@ -76,6 +76,7 @@ depending on Chromium/WebKit/Gecko internals.
 ### Batch 8 — Browser Shell / UI  done
 - [x] Tab management, address bar, navigation history
 - [x] Live URL fetching integration
+- [x] Interactive hyperlink navigation: click `<a>` elements to navigate directly within active tab
 - [ ] Per-site permission prompts (camera/mic/location)
 - [ ] Privacy dashboard (what's blocked, per-origin storage view)
 

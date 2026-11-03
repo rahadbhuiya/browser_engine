@@ -48,3 +48,25 @@ impl Dimensions {
         self.border_box().expanded_by(self.margin)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_rect_contains_point() {
+        let rect = Rect {
+            x: 10.0,
+            y: 20.0,
+            width: 100.0,
+            height: 50.0,
+        };
+        assert!(rect.contains(10.0, 20.0));
+        assert!(rect.contains(110.0, 70.0));
+        assert!(rect.contains(50.0, 40.0));
+        assert!(!rect.contains(9.9, 20.0));
+        assert!(!rect.contains(10.0, 19.9));
+        assert!(!rect.contains(110.1, 50.0));
+        assert!(!rect.contains(50.0, 70.1));
+    }
+}

@@ -93,4 +93,75 @@ mod tests {
         assert_eq!(abs_box.dimensions.content.x, 50.0);
         assert_eq!(abs_box.dimensions.content.y, 30.0);
     }
+
+    #[test]
+    fn test_layout_box_hit_test() {
+        let mut root = LayoutBox::new(BoxType::Block(0));
+        root.dimensions.content = Rect {
+            x: 0.0,
+            y: 0.0,
+            width: 500.0,
+            height: 400.0,
+        };
+
+        let mut child = LayoutBox::new(BoxType::Block(1));
+        child.dimensions.content = Rect {
+            x: 50.0,
+            y: 50.0,
+            width: 200.0,
+            height: 100.0,
+        };
+
+        let mut link_box = LayoutBox::new_inline_link(
+            "Click here".to_string(),
+            "https://rust-lang.org".to_string(),
+        );
+        link_box.dimensions.content = Rect {
+            x: 60.0,
+            y: 60.0,
+            width: 80.0,
+            height: 20.0,
+        };
+
+        child.children.push(link_box);
+        root.children.push(child);
+
+        // Hit link box
+        assert_eq!(
+            root.hit_test_link(70.0, 65.0),
+            Some("https://rust-lang.org")
+        );
+
+        // Inside child but outside link box
+        assert_eq!(root.hit_test_link(180.0, 100.0), None);
+
+        // Outside root
+        assert_eq!(root.hit_test_link(600.0, 500.0), None);
+    }
+
+    #[test]
+    fn test_build_layout_tree_with_inline_hyperlinks() {
+        use crate::dom::build_dom;
+        use crate::html::Tokenizer;
+
+        let html = r#"<div>Click <a href="https://example.com/about">About Us</a> now!</div>"#;
+        let dom = build_dom(Tokenizer::new(html).tokenize());
+        let styles = HashMap::new();
+
+        let layout_tree =
+            build_layout_tree(&dom, &styles, dom.root).expect("Layout tree must build");
+
+        let div_box = &layout_tree.children[0];
+        assert_eq!(div_box.children.len(), 3);
+        assert_eq!(
+            div_box.children[1].text_content.as_deref(),
+            Some("About Us")
+        );
+        assert_eq!(
+            div_box.children[1].link_url.as_deref(),
+            Some("https://example.com/about")
+        );
+        assert_eq!(div_box.children[0].link_url, None);
+        assert_eq!(div_box.children[2].link_url, None);
+    }
 }

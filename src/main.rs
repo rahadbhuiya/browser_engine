@@ -10,18 +10,12 @@ mod security;
 mod style;
 mod ui;
 
-
-
-
-
 use css::{CssParser, CssTokenizer};
 use dom::build_dom;
 use html::Tokenizer;
 use layout::{build_layout_tree, layout_tree};
-use style::compute_styles;
 use render::RenderState;
-
-
+use style::compute_styles;
 
 pub fn fetch_and_render_page(url_str: &str) -> (dom::Dom, Vec<paint::PaintCommand>) {
     let resolved_url = net::format_url_or_search_query(url_str);
@@ -78,7 +72,9 @@ pub fn fetch_and_render_page(url_str: &str) -> (dom::Dom, Vec<paint::PaintComman
     let stylesheet = css::CssParser::new(css::CssTokenizer::new(&css_source).tokenize()).parse();
     let styles = style::compute_styles(&dom_tree, &stylesheet);
 
-    let display_list = if let Some(mut layout_root) = layout::build_layout_tree(&dom_tree, &styles, dom_tree.root) {
+    let display_list = if let Some(mut layout_root) =
+        layout::build_layout_tree(&dom_tree, &styles, dom_tree.root)
+    {
         layout::layout_tree(&mut layout_root, 800.0, &styles);
         paint::build_display_list(&layout_root, &styles)
     } else {
@@ -113,13 +109,13 @@ fn main() {
     println!("=== Diaz's Secure Browser Engine ===");
     println!("Starting GPU-accelerated window...");
 
+    use std::sync::Arc;
     use winit::{
         event::{Event, WindowEvent},
         event_loop::EventLoop,
-        window::WindowBuilder,
         keyboard::{Key, NamedKey},
+        window::WindowBuilder,
     };
-    use std::sync::Arc;
 
     let event_loop = EventLoop::new().unwrap();
     let window = Arc::new(
@@ -127,7 +123,7 @@ fn main() {
             .with_title("Diaz's Secure Browser Engine")
             .with_inner_size(winit::dpi::PhysicalSize::new(1024, 720))
             .build(&event_loop)
-            .unwrap()
+            .unwrap(),
     );
 
     let mut state = pollster::block_on(RenderState::new(window.clone()));
@@ -138,6 +134,7 @@ fn main() {
     let mut context_menu = ui::ContextMenu::new();
     let mut devtools = ui::DevTools::new();
     let mut mouse_pos = (0.0f32, 0.0f32);
+    let mut current_layout_root: Option<layout::LayoutBox> = None;
 
     event_loop.run(move |event, elwt| {
         match event {
@@ -222,6 +219,45 @@ fn main() {
                                 } else if my >= 35.0 && my <= 75.0 {
                                     address_bar.set_text("");
                                     state.window.request_redraw();
+                                } else if my > 75.0 {
+                                    // 2D Point hit-testing against hyperlink bounding boxes
+                                    let content_y = my + tab_manager.active_tab().scroll_y;
+                                    if let Some(ref ltree) = current_layout_root {
+                                        if let Some(href) = ltree.hit_test_link(mx, content_y) {
+                                            let current_base = tab_manager.active_tab().url.clone();
+                                            let target_url = net::resolve_url(&current_base, href);
+                                            println!("Hyperlink clicked: '{}' -> '{}'", href, target_url);
+                                            address_bar.set_text(&target_url);
+                                            let active_title = target_url.clone();
+                                            let body = match net::fetch(&target_url) {
+                                                Ok(resp) => {
+                                                    let raw_body = resp.body_as_string();
+                                                    let mut temp_dom = build_dom(Tokenizer::new(&raw_body).tokenize());
+                                                    let res = net::discover_resources(&temp_dom, &target_url);
+                                                    let external_css = net::ResourceLoader::fetch_all_stylesheets(&res.stylesheets);
+
+                                                    let scripts = js::JsRuntime::extract_scripts(&temp_dom);
+                                                    if !scripts.is_empty() {
+                                                        let mut runtime = js::JsRuntime::new();
+                                                        for s in &scripts {
+                                                            let _ = runtime.execute(s, &mut temp_dom);
+                                                        }
+                                                    }
+
+                                                    if !external_css.is_empty() {
+                                                        format!("<style>{}</style>{}", external_css, raw_body)
+                                                    } else {
+                                                        raw_body
+                                                    }
+                                                }
+                                                Err(err) => {
+                                                    format!("<div class='card'><h2 style='color: red;'>Fetch Error</h2><p>{}</p></div>", err)
+                                                }
+                                            };
+                                            tab_manager.active_tab_mut().navigate_to(&active_title, &target_url, &body);
+                                            state.window.request_redraw();
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -427,8 +463,9 @@ fn main() {
                         if let Some(mut layout_root) = build_layout_tree(&dom_tree, &styles, dom_tree.root) {
                             let viewport_width = state.size.width as f32;
                             layout_tree(&mut layout_root, viewport_width, &styles);
-                            
+
                             let paint_commands = paint::build_display_list(&layout_root, &styles);
+                            current_layout_root = Some(layout_root);
                             if let Err(e) = state.render(&paint_commands, active_tab.scroll_y) {
                                 eprintln!("Render error: {:?}", e);
                             }
@@ -456,7 +493,10 @@ fn print_layout_box(lb: &layout::LayoutBox, depth: usize) {
             println!(
                 "{indent}Text(\"{}\") x={:.0} y={:.0} w={:.0} h={:.0}",
                 lb.text_content.as_deref().unwrap_or(""),
-                d.x, d.y, d.width, d.height
+                d.x,
+                d.y,
+                d.width,
+                d.height
             );
         }
     }
@@ -594,10 +634,16 @@ mod css_tests {
         let sheet = parse("div p { color: blue; } div > span { color: green; }");
         let descendant_selector = &sheet.rules[0].selectors[0];
         assert_eq!(descendant_selector.steps.len(), 2);
-        assert_eq!(descendant_selector.steps[1].0, Some(super::css::Combinator::Descendant));
+        assert_eq!(
+            descendant_selector.steps[1].0,
+            Some(super::css::Combinator::Descendant)
+        );
 
         let child_selector = &sheet.rules[1].selectors[0];
-        assert_eq!(child_selector.steps[1].0, Some(super::css::Combinator::Child));
+        assert_eq!(
+            child_selector.steps[1].0,
+            Some(super::css::Combinator::Child)
+        );
     }
 
     #[test]
@@ -767,7 +813,10 @@ mod batch3_tests {
         let span_idx = dom.nodes[div_idx].children[0];
         let deep_em_idx = dom.nodes[span_idx].children[0];
         let direct_em_idx = dom.nodes[div_idx].children[1];
-        assert!(styles.get(&deep_em_idx).and_then(|s| s.get("color")).is_none());
+        assert!(styles
+            .get(&deep_em_idx)
+            .and_then(|s| s.get("color"))
+            .is_none());
         assert_eq!(
             styles.get(&direct_em_idx).and_then(|s| s.get("color")),
             Some(&"red".to_string())

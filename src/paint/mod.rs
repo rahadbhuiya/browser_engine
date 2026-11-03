@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::layout::{LayoutBox, BoxType, Rect};
+use crate::layout::{BoxType, LayoutBox, Rect};
 use crate::style::ComputedStyle;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -21,15 +21,30 @@ impl Color {
     }
 
     pub fn black() -> Self {
-        Color { r: 0.0, g: 0.0, b: 0.0, a: 1.0 }
+        Color {
+            r: 0.0,
+            g: 0.0,
+            b: 0.0,
+            a: 1.0,
+        }
     }
 
     pub fn white() -> Self {
-        Color { r: 1.0, g: 1.0, b: 1.0, a: 1.0 }
+        Color {
+            r: 1.0,
+            g: 1.0,
+            b: 1.0,
+            a: 1.0,
+        }
     }
 
     pub fn transparent() -> Self {
-        Color { r: 0.0, g: 0.0, b: 0.0, a: 0.0 }
+        Color {
+            r: 0.0,
+            g: 0.0,
+            b: 0.0,
+            a: 0.0,
+        }
     }
 }
 
@@ -159,7 +174,8 @@ fn build_recursive(
             // 0. Draw Box Shadow (Elevation)
             if let Some(s) = style {
                 if let Some(_shadow_str) = s.get("box-shadow") {
-                    let shadow_color = parse_color("rgba(0, 0, 0, 0.35)").unwrap_or(Color::new(0.0, 0.0, 0.0, 0.35));
+                    let shadow_color = parse_color("rgba(0, 0, 0, 0.35)")
+                        .unwrap_or(Color::new(0.0, 0.0, 0.0, 0.35));
                     *order += 1;
                     items.push(LayeredCommand {
                         cmd: PaintCommand::DrawRect {
@@ -202,7 +218,11 @@ fn build_recursive(
 
             // 2. Draw Borders
             let border_width = lb.dimensions.border;
-            if border_width.top > 0.0 || border_width.bottom > 0.0 || border_width.left > 0.0 || border_width.right > 0.0 {
+            if border_width.top > 0.0
+                || border_width.bottom > 0.0
+                || border_width.left > 0.0
+                || border_width.right > 0.0
+            {
                 let border_color_str = style.and_then(|s| s.get("border-color"));
                 let color = border_color_str
                     .and_then(|c| parse_color(c))
@@ -290,10 +310,17 @@ fn build_recursive(
         }
         BoxType::Anonymous => {
             if let Some(text) = &lb.text_content {
-                let color = parent_style
-                    .and_then(|s| s.get("color"))
-                    .and_then(|c| parse_color(c))
-                    .unwrap_or(Color::black());
+                let color = if lb.link_url.is_some() {
+                    parent_style
+                        .and_then(|s| s.get("color"))
+                        .and_then(|c| parse_color(c))
+                        .unwrap_or(Color::new(0.24, 0.55, 0.95, 1.0))
+                } else {
+                    parent_style
+                        .and_then(|s| s.get("color"))
+                        .and_then(|c| parse_color(c))
+                        .unwrap_or(Color::black())
+                };
 
                 let font_size = parent_style
                     .and_then(|s| s.get("font-size"))
@@ -309,7 +336,8 @@ fn build_recursive(
 
                 let char_width = 8.0 * (font_size / 16.0);
                 let line_height = 18.0 * (font_size / 16.0);
-                let lines = crate::layout::engine::wrap_text(text, lb.dimensions.content.width, char_width);
+                let lines =
+                    crate::layout::engine::wrap_text(text, lb.dimensions.content.width, char_width);
 
                 for (idx, line) in lines.into_iter().enumerate() {
                     *order += 1;
@@ -349,14 +377,25 @@ mod tests {
 
     #[test]
     fn parses_rgb_color_function() {
-        assert_eq!(parse_color("rgb(255, 0, 0)"), Some(Color::new(1.0, 0.0, 0.0, 1.0)));
-        assert_eq!(parse_color("rgba(0, 128, 255, 0.5)"), Some(Color::new(0.0, 128.0 / 255.0, 1.0, 0.5)));
+        assert_eq!(
+            parse_color("rgb(255, 0, 0)"),
+            Some(Color::new(1.0, 0.0, 0.0, 1.0))
+        );
+        assert_eq!(
+            parse_color("rgba(0, 128, 255, 0.5)"),
+            Some(Color::new(0.0, 128.0 / 255.0, 1.0, 0.5))
+        );
     }
 
     #[test]
     fn test_draw_image_paint_command() {
         let cmd = PaintCommand::DrawImage {
-            rect: Rect { x: 0.0, y: 0.0, width: 100.0, height: 100.0 },
+            rect: Rect {
+                x: 0.0,
+                y: 0.0,
+                width: 100.0,
+                height: 100.0,
+            },
             src: "logo.png".to_string(),
             alt: "Logo".to_string(),
             is_fixed: false,
@@ -404,7 +443,11 @@ mod tests {
         let list = build_display_list(&root, &styles);
         // child 2 (z-index 1) must be rendered before child 1 (z-index 10)
         assert_eq!(list.len(), 2);
-        if let (PaintCommand::DrawRect { color: c1, .. }, PaintCommand::DrawRect { color: c2, .. }) = (&list[0], &list[1]) {
+        if let (
+            PaintCommand::DrawRect { color: c1, .. },
+            PaintCommand::DrawRect { color: c2, .. },
+        ) = (&list[0], &list[1])
+        {
             assert_eq!(*c1, Color::new(0.0, 0.0, 1.0, 1.0)); // blue
             assert_eq!(*c2, Color::new(1.0, 0.0, 0.0, 1.0)); // red
         }

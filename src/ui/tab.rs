@@ -27,8 +27,14 @@ impl Tab {
                     
                     <div class="card" style="background-color: #111827; border-radius: 12px; padding: 20px; border: 1px solid #1f2937; margin-bottom: 16px;">
                         <p style="color: #38bdf8; font-weight: bold; font-size: 16px; margin-bottom: 10px;">SPEED DIAL & QUICK LINKS</p>
-                        <p style="color: #e2e8f0; font-size: 14px; margin: 8px 0;">[ Google ]   [ GitHub ]   [ YouTube ]   [ Rust Docs ]   [ Wikipedia ]</p>
-                        <p style="color: #6b7280; font-size: 13px; margin-top: 10px;">Type a URL or search query in the Omnibox above and press Enter to navigate.</p>
+                        <p style="color: #e2e8f0; font-size: 14px; margin: 8px 0;">
+                            <a href="https://google.com" style="color: #38bdf8; margin: 0 6px;">[ Google ]</a>
+                            <a href="https://github.com" style="color: #38bdf8; margin: 0 6px;">[ GitHub ]</a>
+                            <a href="https://youtube.com" style="color: #38bdf8; margin: 0 6px;">[ YouTube ]</a>
+                            <a href="https://doc.rust-lang.org" style="color: #38bdf8; margin: 0 6px;">[ Rust Docs ]</a>
+                            <a href="https://wikipedia.org" style="color: #38bdf8; margin: 0 6px;">[ Wikipedia ]</a>
+                        </p>
+                        <p style="color: #6b7280; font-size: 13px; margin-top: 10px;">Click any link or type a URL in the Omnibox above to navigate.</p>
                     </div>
                 </div>
                 "#
@@ -88,7 +94,11 @@ impl TabManager {
     pub fn new_tab(&mut self, title: &str, url: &str) -> usize {
         let id = self.next_id;
         self.next_id += 1;
-        let tab_title = if title.is_empty() { format!("Tab {}", id) } else { title.to_string() };
+        let tab_title = if title.is_empty() {
+            format!("Tab {}", id)
+        } else {
+            title.to_string()
+        };
         self.tabs.push(Tab::new(id, &tab_title, url));
         self.active_index = self.tabs.len() - 1;
         id
@@ -118,13 +128,19 @@ impl TabManager {
     }
 
     pub fn render_tab_strip_html(&self) -> String {
-        let mut html = String::from(r#"<div class="tab-strip" style="background-color: #0b0f19; padding: 6px 16px 0 16px; border-bottom: 1px solid #1f2937;">"#);
+        let mut html = String::from(
+            r#"<div class="tab-strip" style="background-color: #0b0f19; padding: 6px 16px 0 16px; border-bottom: 1px solid #1f2937;">"#,
+        );
         for (i, tab) in self.tabs.iter().enumerate() {
             let is_active = i == self.active_index;
             let bg_color = if is_active { "#111827" } else { "#0b0f19" };
             let text_color = if is_active { "#38bdf8" } else { "#9ca3af" };
-            let border = if is_active { "1px solid #374151" } else { "1px solid transparent" };
-            
+            let border = if is_active {
+                "1px solid #374151"
+            } else {
+                "1px solid transparent"
+            };
+
             html.push_str(&format!(
                 r#"<span style="background-color: {}; color: {}; border: {}; border-radius: 6px 6px 0 0; padding: 6px 14px; margin-right: 4px; font-weight: bold; font-size: 13px;">[{}] {}  [x]</span>"#,
                 bg_color, text_color, border, i + 1, tab.title
