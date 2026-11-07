@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 use wgpu::util::DeviceExt;
 use winit::window::Window;
@@ -26,6 +27,20 @@ pub struct InstanceRaw {
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct ImageVertex {
+    pub position: [f32; 2],
+    pub uv: [f32; 2],
+}
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct ImageInstanceRaw {
+    pub position: [f32; 2],
+    pub size: [f32; 2],
+}
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct ViewportUniform {
     pub size: [f32; 2],
 }
@@ -35,6 +50,13 @@ const VERTICES: &[Vertex] = &[
     Vertex { position: [1.0, 0.0] },
     Vertex { position: [0.0, 1.0] },
     Vertex { position: [1.0, 1.0] },
+];
+
+const IMAGE_VERTICES: &[ImageVertex] = &[
+    ImageVertex { position: [0.0, 0.0], uv: [0.0, 0.0] },
+    ImageVertex { position: [1.0, 0.0], uv: [1.0, 0.0] },
+    ImageVertex { position: [0.0, 1.0], uv: [0.0, 1.0] },
+    ImageVertex { position: [1.0, 1.0], uv: [1.0, 1.0] },
 ];
 
 pub struct RenderState {
@@ -50,6 +72,14 @@ pub struct RenderState {
     pub vertex_buffer: wgpu::Buffer,
     pub viewport_buffer: wgpu::Buffer,
     pub viewport_bind_group: wgpu::BindGroup,
+
+    // Image Rendering Pipeline & GPU Texture Cache
+    pub image_pipeline: wgpu::RenderPipeline,
+    pub image_vertex_buffer: wgpu::Buffer,
+    pub image_bind_group_layout: wgpu::BindGroupLayout,
+    pub image_sampler: wgpu::Sampler,
+    pub gpu_image_cache: HashMap<String, (wgpu::Texture, wgpu::BindGroup)>,
+    pub image_cache: ImageCache,
 
     // Text Rendering
     pub glyph_brush: GlyphBrush<()>,
@@ -243,7 +273,128 @@ impl RenderState {
             usage: wgpu::BufferUsages::VERTEX,
         });
 
-        // 6. Setup Text Rendering with wgpu_glyph
+        // 6. Setup Image Pipeline and Bind Group Layout
+        let image_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                        count: None,
+                    },
+                ],
+                label: Some("image_bind_group_layout"),
+            });
+
+        let image_pipeline_layout =
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Image Pipeline Layout"),
+                bind_group_layouts: &[&viewport_bind_group_layout, &image_bind_group_layout],
+                push_constant_ranges: &[],
+            });
+
+        let image_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("Image Shader"),
+            source: wgpu::ShaderSource::Wgsl(include_str!("image_shader.wgsl").into()),
+        });
+
+        let image_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("Image Render Pipeline"),
+            layout: Some(&image_pipeline_layout),
+            vertex: wgpu::VertexState {
+                module: &image_shader,
+                entry_point: Some("vs_main"),
+                compilation_options: Default::default(),
+                buffers: &[
+                    wgpu::VertexBufferLayout {
+                        array_stride: std::mem::size_of::<ImageVertex>() as wgpu::BufferAddress,
+                        step_mode: wgpu::VertexStepMode::Vertex,
+                        attributes: &[
+                            wgpu::VertexAttribute {
+                                offset: 0,
+                                shader_location: 0,
+                                format: wgpu::VertexFormat::Float32x2,
+                            },
+                            wgpu::VertexAttribute {
+                                offset: 8,
+                                shader_location: 1,
+                                format: wgpu::VertexFormat::Float32x2,
+                            },
+                        ],
+                    },
+                    wgpu::VertexBufferLayout {
+                        array_stride: std::mem::size_of::<ImageInstanceRaw>() as wgpu::BufferAddress,
+                        step_mode: wgpu::VertexStepMode::Instance,
+                        attributes: &[
+                            wgpu::VertexAttribute {
+                                offset: 0,
+                                shader_location: 2,
+                                format: wgpu::VertexFormat::Float32x2,
+                            },
+                            wgpu::VertexAttribute {
+                                offset: 8,
+                                shader_location: 3,
+                                format: wgpu::VertexFormat::Float32x2,
+                            },
+                        ],
+                    },
+                ],
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: &image_shader,
+                entry_point: Some("fs_main"),
+                compilation_options: Default::default(),
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: config.format,
+                    blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleStrip,
+                strip_index_format: None,
+                front_face: wgpu::FrontFace::Ccw,
+                cull_mode: None,
+                polygon_mode: wgpu::PolygonMode::Fill,
+                unclipped_depth: false,
+                conservative: false,
+            },
+            depth_stencil: None,
+            multisample: wgpu::MultisampleState {
+                count: 1,
+                mask: !0,
+                alpha_to_coverage_enabled: false,
+            },
+            multiview: None,
+            cache: None,
+        });
+
+        let image_vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Image Vertex Buffer"),
+            contents: bytemuck::cast_slice(IMAGE_VERTICES),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
+
+        let image_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            ..Default::default()
+        });
+
+        // 7. Setup Text Rendering with wgpu_glyph
         // Arial font is standard on Windows. If it fails, fallback to standard bytes can be added,
         // but since we run on Lester's system (Windows), Fonts/arial.ttf will exist.
         let font_data = std::fs::read("C:\\Windows\\Fonts\\arial.ttf")
@@ -263,6 +414,12 @@ impl RenderState {
             vertex_buffer,
             viewport_buffer,
             viewport_bind_group,
+            image_pipeline,
+            image_vertex_buffer,
+            image_bind_group_layout,
+            image_sampler,
+            gpu_image_cache: HashMap::new(),
+            image_cache: ImageCache::new(),
             glyph_brush,
             staging_belt,
         }
@@ -287,7 +444,70 @@ impl RenderState {
         }
     }
 
+    /// Ensures the decoded image is uploaded to a GPU texture with a sampled bind group.
+    pub fn ensure_texture_uploaded(&mut self, url: &str, decoded: &DecodedImage) {
+        if !self.gpu_image_cache.contains_key(url) {
+            let width = decoded.width.max(1);
+            let height = decoded.height.max(1);
+            let texture_size = wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            };
+            let texture = self.device.create_texture(&wgpu::TextureDescriptor {
+                label: Some(url),
+                size: texture_size,
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: wgpu::TextureFormat::Rgba8UnormSrgb,
+                usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+                view_formats: &[],
+            });
+            self.queue.write_texture(
+                wgpu::ImageCopyTexture {
+                    texture: &texture,
+                    mip_level: 0,
+                    origin: wgpu::Origin3d::ZERO,
+                    aspect: wgpu::TextureAspect::All,
+                },
+                &decoded.rgba,
+                wgpu::ImageDataLayout {
+                    offset: 0,
+                    bytes_per_row: Some(4 * width),
+                    rows_per_image: Some(height),
+                },
+                texture_size,
+            );
+            let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+            let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                layout: &self.image_bind_group_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: wgpu::BindingResource::TextureView(&view),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: wgpu::BindingResource::Sampler(&self.image_sampler),
+                    },
+                ],
+                label: Some(url),
+            });
+            self.gpu_image_cache.insert(url.to_string(), (texture, bind_group));
+        }
+    }
+
     pub fn render(&mut self, paint_commands: &[PaintCommand], scroll_y: f32) -> Result<(), wgpu::SurfaceError> {
+        self.render_with_cache(paint_commands, scroll_y, None)
+    }
+
+    pub fn render_with_cache(
+        &mut self,
+        paint_commands: &[PaintCommand],
+        scroll_y: f32,
+        external_cache: Option<&ImageCache>,
+    ) -> Result<(), wgpu::SurfaceError> {
         let output = self.surface.get_current_texture()?;
         let view = output
             .texture
@@ -297,9 +517,10 @@ impl RenderState {
             label: Some("Render Encoder"),
         });
 
-        // 1. Separate Rectangles and Text Commands
+        // 1. Separate Rectangles, Images, and Text Commands
         let mut instances = Vec::new();
         let mut text_sections = Vec::new();
+        let mut image_draws: Vec<([f32; 2], [f32; 2], String)> = Vec::new();
 
         for cmd in paint_commands {
             match cmd {
@@ -322,22 +543,33 @@ impl RenderState {
                         *font_size,
                     ));
                 }
-                PaintCommand::DrawImage { rect, alt, is_fixed, .. } => {
+                PaintCommand::DrawImage { rect, src, alt, is_fixed } => {
                     let y_pos = if *is_fixed { rect.y } else { rect.y - scroll_y };
-                    instances.push(InstanceRaw {
-                        position: [rect.x, y_pos],
-                        size: [rect.width, rect.height],
-                        color: [0.12, 0.16, 0.23, 1.0],
-                        corner_radius: 6.0,
-                        _padding: [0.0; 3],
-                    });
-                    let label = format!("Image [{}]", if alt.is_empty() { "Graphic" } else { alt });
-                    text_sections.push((
-                        label,
-                        [rect.x + 8.0, y_pos + 8.0],
-                        Color::new(0.22, 0.74, 0.97, 1.0),
-                        14.0,
-                    ));
+                    let decoded_opt = external_cache
+                        .and_then(|c| c.get(src))
+                        .or_else(|| self.image_cache.get(src))
+                        .cloned();
+
+                    if let Some(decoded) = decoded_opt {
+                        self.ensure_texture_uploaded(src, &decoded);
+                        image_draws.push(([rect.x, y_pos], [rect.width, rect.height], src.clone()));
+                    } else {
+                        // Fallback placeholder box and label while loading
+                        instances.push(InstanceRaw {
+                            position: [rect.x, y_pos],
+                            size: [rect.width, rect.height],
+                            color: [0.12, 0.16, 0.23, 1.0],
+                            corner_radius: 6.0,
+                            _padding: [0.0; 3],
+                        });
+                        let label = format!("Image [{}]", if alt.is_empty() { "Graphic" } else { alt });
+                        text_sections.push((
+                            label,
+                            [rect.x + 8.0, y_pos + 8.0],
+                            Color::new(0.22, 0.74, 0.97, 1.0),
+                            14.0,
+                        ));
+                    }
                 }
             }
         }
@@ -349,7 +581,7 @@ impl RenderState {
             usage: wgpu::BufferUsages::VERTEX,
         });
 
-        // 3. Render Pass for Rectangles
+        // 3. Render Pass for Rectangles & Images
         {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Render Pass"),
@@ -371,12 +603,34 @@ impl RenderState {
                 occlusion_query_set: None,
             });
 
+            // Draw Rectangles
             if !instances.is_empty() {
                 render_pass.set_pipeline(&self.render_pipeline);
                 render_pass.set_bind_group(0, &self.viewport_bind_group, &[]);
                 render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
                 render_pass.set_vertex_buffer(1, instance_buffer.slice(..));
                 render_pass.draw(0..VERTICES.len() as u32, 0..instances.len() as u32);
+            }
+
+            // Draw Textured Image Quads
+            for (pos, size, src) in &image_draws {
+                if let Some((_, bind_group)) = self.gpu_image_cache.get(src) {
+                    let img_instance = ImageInstanceRaw {
+                        position: *pos,
+                        size: *size,
+                    };
+                    let img_instance_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                        label: Some("Image Instance Buffer"),
+                        contents: bytemuck::cast_slice(&[img_instance]),
+                        usage: wgpu::BufferUsages::VERTEX,
+                    });
+                    render_pass.set_pipeline(&self.image_pipeline);
+                    render_pass.set_bind_group(0, &self.viewport_bind_group, &[]);
+                    render_pass.set_bind_group(1, bind_group, &[]);
+                    render_pass.set_vertex_buffer(0, self.image_vertex_buffer.slice(..));
+                    render_pass.set_vertex_buffer(1, img_instance_buffer.slice(..));
+                    render_pass.draw(0..IMAGE_VERTICES.len() as u32, 0..1);
+                }
             }
         }
 
@@ -392,7 +646,7 @@ impl RenderState {
             });
         }
 
-        // 5. Render Pass for Text (drawn on top of rectangles)
+        // 5. Render Pass for Text (drawn on top of rectangles and images)
         self.glyph_brush
             .draw_queued(
                 &self.device,

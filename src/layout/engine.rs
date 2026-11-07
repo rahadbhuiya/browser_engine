@@ -151,17 +151,22 @@ fn layout_block(
     let explicit_width = style
         .and_then(|s| s.get("width"))
         .filter(|w| w.as_str() != "auto")
-        .map(|w| parse_length(w, containing_width));
+        .map(|w| parse_length(w, containing_width))
+        .or_else(|| lb.image_data.as_ref().and_then(|img| img.width));
 
     let used_width = explicit_width.unwrap_or_else(|| {
-        (containing_width
-            - lb.dimensions.margin.left
-            - lb.dimensions.margin.right
-            - lb.dimensions.border.left
-            - lb.dimensions.border.right
-            - lb.dimensions.padding.left
-            - lb.dimensions.padding.right)
-            .max(0.0)
+        if lb.image_data.is_some() {
+            300.0f32.min(containing_width).max(20.0)
+        } else {
+            (containing_width
+                - lb.dimensions.margin.left
+                - lb.dimensions.margin.right
+                - lb.dimensions.border.left
+                - lb.dimensions.border.right
+                - lb.dimensions.padding.left
+                - lb.dimensions.padding.right)
+                .max(0.0)
+        }
     });
     lb.dimensions.content.width = used_width;
 
@@ -268,9 +273,16 @@ fn layout_block(
     let explicit_height = style
         .and_then(|s| s.get("height"))
         .filter(|h| h.as_str() != "auto")
-        .map(|h| parse_length(h, containing_width));
+        .map(|h| parse_length(h, containing_width))
+        .or_else(|| lb.image_data.as_ref().and_then(|img| img.height));
 
-    lb.dimensions.content.height = explicit_height.unwrap_or(children_height);
+    let fallback_height = if lb.image_data.is_some() {
+        (lb.dimensions.content.width * 0.75).min(400.0).max(30.0)
+    } else {
+        children_height
+    };
+
+    lb.dimensions.content.height = explicit_height.unwrap_or(fallback_height);
 }
 
 fn layout_block_children(lb: &mut LayoutBox, styles: &HashMap<usize, ComputedStyle>) -> f32 {

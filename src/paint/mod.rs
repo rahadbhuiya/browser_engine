@@ -304,6 +304,21 @@ fn build_recursive(
                 }
             }
 
+            // 3. Draw Image if present
+            if let Some(ref img) = lb.image_data {
+                *order += 1;
+                items.push(LayeredCommand {
+                    cmd: PaintCommand::DrawImage {
+                        rect: lb.dimensions.content,
+                        src: img.src.clone(),
+                        alt: img.alt.clone(),
+                        is_fixed,
+                    },
+                    z_index,
+                    order: *order,
+                });
+            }
+
             for child in &lb.children {
                 build_recursive(child, styles, style, is_fixed, z_index, items, order);
             }

@@ -28,6 +28,14 @@ pub enum BoxType {
     Anonymous,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct ImageBoxData {
+    pub src: String,
+    pub alt: String,
+    pub width: Option<f32>,
+    pub height: Option<f32>,
+}
+
 #[derive(Debug, Clone)]
 pub struct LayoutBox {
     pub dimensions: Dimensions,
@@ -37,6 +45,8 @@ pub struct LayoutBox {
     pub text_content: Option<String>,
     /// Hyperlink destination URL if this box represents an <a> anchor element.
     pub link_url: Option<String>,
+    /// Image metadata if this box represents an <img> element.
+    pub image_data: Option<ImageBoxData>,
 }
 
 impl LayoutBox {
@@ -47,6 +57,7 @@ impl LayoutBox {
             children: vec![],
             text_content: None,
             link_url: None,
+            image_data: None,
         }
     }
     pub fn new_block(node_idx: usize) -> Self {
@@ -59,6 +70,7 @@ impl LayoutBox {
             children: vec![],
             text_content: Some(text),
             link_url: None,
+            image_data: None,
         }
     }
     pub fn new_inline_link(text: String, href: String) -> Self {
@@ -68,6 +80,7 @@ impl LayoutBox {
             children: vec![],
             text_content: Some(text),
             link_url: Some(href),
+            image_data: None,
         }
     }
 
@@ -175,6 +188,12 @@ pub fn build_layout_tree(
             if let Some(href) = el.get_attribute("href") {
                 layout_box.link_url = Some(href.to_string());
             }
+        } else if el.tag.eq_ignore_ascii_case("img") {
+            let src = el.get_attribute("src").unwrap_or("").to_string();
+            let alt = el.get_attribute("alt").unwrap_or("").to_string();
+            let width = el.get_attribute("width").and_then(|w| w.trim().parse::<f32>().ok());
+            let height = el.get_attribute("height").and_then(|h| h.trim().parse::<f32>().ok());
+            layout_box.image_data = Some(ImageBoxData { src, alt, width, height });
         }
     }
 
@@ -203,6 +222,11 @@ pub fn build_layout_tree(
                     let href = el.get_attribute("href").unwrap_or("").to_string();
                     let link_box = LayoutBox::new_inline_link(link_text, href);
                     layout_box.children.push(link_box);
+                } else if el.tag.eq_ignore_ascii_case("img") {
+                    flush_inline_run(&mut pending_inline, &mut layout_box);
+                    if let Some(img_box) = build_layout_tree(dom, styles, child_idx) {
+                        layout_box.children.push(img_box);
+                    }
                 } else {
                     collect_inline_text(dom, child_idx, &mut pending_inline);
                 }

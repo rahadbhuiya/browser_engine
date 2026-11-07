@@ -7,6 +7,7 @@ pub struct DecodedImage {
     pub rgba: Vec<u8>,
 }
 
+#[derive(Debug, Clone, Default)]
 pub struct ImageCache {
     cache: HashMap<String, DecodedImage>,
 }
@@ -16,6 +17,10 @@ impl ImageCache {
         ImageCache {
             cache: HashMap::new(),
         }
+    }
+
+    pub fn insert(&mut self, url: &str, decoded: DecodedImage) {
+        self.cache.insert(url.to_string(), decoded);
     }
 
     /// Decodes image bytes (PNG, JPEG, etc.) into an RGBA8 pixel buffer and caches it by URL.

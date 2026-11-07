@@ -164,4 +164,32 @@ mod tests {
         assert_eq!(div_box.children[0].link_url, None);
         assert_eq!(div_box.children[2].link_url, None);
     }
+
+    #[test]
+    fn test_image_layout_dimensional_scaling() {
+        use crate::dom::build_dom;
+        use crate::html::Tokenizer;
+
+        let html = r#"<div><img src="https://example.com/logo.png" alt="Logo" width="240" height="120"></div>"#;
+        let dom = build_dom(Tokenizer::new(html).tokenize());
+        let styles = HashMap::new();
+
+        let mut layout_root =
+            build_layout_tree(&dom, &styles, dom.root).expect("Layout tree must build");
+        layout_tree(&mut layout_root, 800.0, &styles);
+
+        let div_box = &layout_root.children[0];
+        let img_box = &div_box.children[0];
+
+        assert!(img_box.image_data.is_some());
+        let img_data = img_box.image_data.as_ref().unwrap();
+        assert_eq!(img_data.src, "https://example.com/logo.png");
+        assert_eq!(img_data.alt, "Logo");
+        assert_eq!(img_data.width, Some(240.0));
+        assert_eq!(img_data.height, Some(120.0));
+
+        // Dimensional scaling check
+        assert_eq!(img_box.dimensions.content.width, 240.0);
+        assert_eq!(img_box.dimensions.content.height, 120.0);
+    }
 }

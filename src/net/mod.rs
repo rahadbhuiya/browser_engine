@@ -14,7 +14,7 @@ pub use cookie::{Cookie, CookieJar, SameSite};
 pub use downloader::{DownloadItem, DownloadManager};
 pub use fetch::fetch;
 pub use http::{HttpRequest, HttpResponse, UserAgentMode};
-pub use resource_loader::{discover_resources, resolve_url, DiscoveredResources, ResourceLoader};
+pub use resource_loader::{discover_resources, resolve_url, AsyncImagePipeline, DiscoveredResources, ResourceLoader};
 pub use url_parser::{format_url_or_search_query, ParsedUrl, Scheme};
 pub use websocket::{WebSocketClient, WebSocketFrame};
 
