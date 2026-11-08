@@ -11,7 +11,7 @@ pub use address_bar::AddressBar;
 pub use bookmarks::{Bookmark, BookmarkManager};
 pub use context_menu::ContextMenu;
 pub use devtools::{DevTools, DevToolsTab};
-pub use navbar::NavBarHistory;
+pub use navbar::{NavAction, NavBar, NavBarHistory};
 pub use tab::{Tab, TabManager};
 
 #[cfg(test)]

@@ -161,7 +161,6 @@ cargo run --release
 - **Rahad Bhuiya** ([@rahadbhuiya](https://github.com/rahadbhuiya))
   - Core Systems & Linux Kernel Engineer
   - Author of `xdp-guard` and `Exploidus OS`
-  - Upstream contributor to `aya-rs/aya` and `sched-ext/scx`
 
 ---
 

@@ -104,6 +104,86 @@ fn collect_inline_styles(dom: &dom::Dom) -> String {
     out
 }
 
+fn navigate_tab(
+    tab_manager: &mut ui::TabManager,
+    address_bar: &mut ui::AddressBar,
+    window: &std::sync::Arc<winit::window::Window>,
+    target_url: &str,
+    is_new: bool,
+    image_pipeline: &net::AsyncImagePipeline,
+) {
+    let resolved_url = net::format_url_or_search_query(target_url);
+    address_bar.set_text(&resolved_url);
+
+    let is_live_page = resolved_url.starts_with("http://") || resolved_url.starts_with("https://");
+    let (title, body) = if is_live_page {
+        match net::fetch(&resolved_url) {
+            Ok(resp) => {
+                let raw_body = resp.body_as_string();
+                let mut temp_dom = dom::build_dom(html::Tokenizer::new(&raw_body).tokenize());
+                let res = net::discover_resources(&temp_dom, &resolved_url);
+                let external_css = net::ResourceLoader::fetch_all_stylesheets(&res.stylesheets);
+
+                // Queue discovered image URLs for asynchronous background download
+                for img_url in &res.images {
+                    let win = std::sync::Arc::clone(window);
+                    image_pipeline.queue_fetch(img_url, move || {
+                        win.request_redraw();
+                    });
+                }
+
+                // Execute embedded scripts with JsRuntime
+                let scripts = js::JsRuntime::extract_scripts(&temp_dom);
+                if !scripts.is_empty() {
+                    let mut runtime = js::JsRuntime::new();
+                    for s in &scripts {
+                        let _ = runtime.execute(s, &mut temp_dom);
+                    }
+                }
+
+                // Extract <title> if present
+                let title_nodes = temp_dom.get_elements_by_tag_name("title");
+                let extracted_title = title_nodes
+                    .first()
+                    .map(|&idx| temp_dom.text_content(idx).trim().to_string())
+                    .filter(|t| !t.is_empty());
+
+                let final_title = extracted_title.unwrap_or_else(|| resolved_url.clone());
+                let final_body = if !external_css.is_empty() {
+                    format!("<style>{}</style>{}", external_css, raw_body)
+                } else {
+                    raw_body
+                };
+                (final_title, final_body)
+            }
+            Err(err) => (
+                "Fetch Error".to_string(),
+                format!("<div class='card'><h2 style='color: red;'>Fetch Error</h2><p>{}</p></div>", err),
+            ),
+        }
+    } else {
+        (
+            "Diaz's Secure Browser Engine".to_string(),
+            r#"<div class="page"><h1 class="title">Secure Browser Engine</h1><p>Type a search query or URL and press Enter to search!</p></div>"#.to_string(),
+        )
+    };
+
+    window.set_title(&format!("{} - Diaz's Secure Browser Engine", title));
+
+    let tab = tab_manager.active_tab_mut();
+    if is_new {
+        tab.navigate_to(&title, &resolved_url, &body);
+    } else {
+        tab.title = title;
+        tab.url = resolved_url;
+        tab.page_body = body;
+        tab.scroll_y = 0.0;
+        tab.target_scroll_y = 0.0;
+        tab.scroll_velocity = 0.0;
+    }
+    window.request_redraw();
+}
+
 #[cfg(not(test))]
 fn main() {
     println!("=== Diaz's Secure Browser Engine ===");
@@ -133,9 +213,12 @@ fn main() {
     let download_manager = net::DownloadManager::new();
     let mut context_menu = ui::ContextMenu::new();
     let mut devtools = ui::DevTools::new();
+    let navbar = ui::NavBar::new();
+    let image_pipeline = net::AsyncImagePipeline::new();
+    let mut modifiers_state = winit::keyboard::ModifiersState::default();
     let mut mouse_pos = (0.0f32, 0.0f32);
     let mut current_layout_root: Option<layout::LayoutBox> = None;
-    /// Total rendered document height in pixels (updated each RedrawRequested).
+    // Total rendered document height in pixels (updated each RedrawRequested).
     let mut document_height: f32 = 0.0;
 
     event_loop.run(move |event, elwt| {
@@ -150,6 +233,9 @@ fn main() {
                     WindowEvent::ScaleFactorChanged { .. } => {
                         state.resize(state.window.inner_size());
                         state.window.request_redraw();
+                    }
+                    WindowEvent::ModifiersChanged(m) => {
+                        modifiers_state = m.state();
                     }
                     WindowEvent::CursorMoved { position, .. } => {
                         mouse_pos = (position.x as f32, position.y as f32);
@@ -179,17 +265,18 @@ fn main() {
                                         match item {
                                             "Back" => {
                                                 if let Some(prev) = tab_manager.active_tab_mut().history.go_back() {
-                                                    address_bar.set_text(&prev);
+                                                    navigate_tab(&mut tab_manager, &mut address_bar, &state.window, &prev, false, &image_pipeline);
                                                 }
                                             }
                                             "Forward" => {
                                                 if let Some(next) = tab_manager.active_tab_mut().history.go_forward() {
-                                                    address_bar.set_text(&next);
+                                                    navigate_tab(&mut tab_manager, &mut address_bar, &state.window, &next, false, &image_pipeline);
                                                 }
                                             }
                                             "Reload" => {
-                                                let target = address_bar.resolve_query();
+                                                let target = tab_manager.active_tab().url.clone();
                                                 println!("Reloading: {}", target);
+                                                navigate_tab(&mut tab_manager, &mut address_bar, &state.window, &target, false, &image_pipeline);
                                             }
                                             "Copy URL" => {
                                                 println!("URL copied to clipboard: {}", tab_manager.active_tab().url);
@@ -207,34 +294,46 @@ fn main() {
                                     println!("Closing tab: {}", close_idx);
                                     tab_manager.close_tab(close_idx);
                                     address_bar.set_text(&tab_manager.active_tab().url);
+                                    state.window.set_title(&format!("{} - Diaz's Secure Browser Engine", tab_manager.active_tab().title));
                                     state.window.request_redraw();
                                 } else if tab_manager.is_new_tab_click(mx, my) {
                                     println!("Opening new tab");
                                     tab_manager.new_tab("New Tab", "https://google.com");
                                     address_bar.set_text(&tab_manager.active_tab().url);
+                                    state.window.set_title("New Tab - Diaz's Secure Browser Engine");
                                     state.window.request_redraw();
                                 } else if let Some(tab_idx) = tab_manager.get_tab_at_click(mx, my) {
                                     tab_manager.switch_tab(tab_idx);
                                     address_bar.set_text(&tab_manager.active_tab().url);
+                                    state.window.set_title(&format!("{} - Diaz's Secure Browser Engine", tab_manager.active_tab().title));
                                     state.window.request_redraw();
+                                } else if let Some(action) = navbar.get_button_at_click(mx, my) {
+                                    match action {
+                                        ui::NavAction::Back => {
+                                            if let Some(prev) = tab_manager.active_tab_mut().history.go_back() {
+                                                println!("Back button clicked: {}", prev);
+                                                navigate_tab(&mut tab_manager, &mut address_bar, &state.window, &prev, false, &image_pipeline);
+                                            }
+                                        }
+                                        ui::NavAction::Forward => {
+                                            if let Some(next) = tab_manager.active_tab_mut().history.go_forward() {
+                                                println!("Forward button clicked: {}", next);
+                                                navigate_tab(&mut tab_manager, &mut address_bar, &state.window, &next, false, &image_pipeline);
+                                            }
+                                        }
+                                        ui::NavAction::Reload => {
+                                            let current_url = tab_manager.active_tab().url.clone();
+                                            println!("Reload button clicked: {}", current_url);
+                                            navigate_tab(&mut tab_manager, &mut address_bar, &state.window, &current_url, false, &image_pipeline);
+                                        }
+                                    }
                                 } else if let Some(target_url) = bookmark_manager.get_url_at_click(mx, my) {
                                     println!("Bookmark clicked: {}", target_url);
-                                    address_bar.set_text(&target_url);
-                                    let active_title = target_url.clone();
-                                    let body = match net::fetch(&target_url) {
-                                        Ok(resp) => {
-                                            format!("<div class='card'><h2>Results for: {}</h2><p>{}</p></div>", active_title, resp.body_as_string())
-                                        }
-                                        Err(err) => {
-                                            format!("<div class='card'><h2 style='color: red;'>Fetch Error</h2><p>{}</p></div>", err)
-                                        }
-                                    };
-                                    tab_manager.active_tab_mut().navigate_to(&active_title, &target_url, &body);
-                                    state.window.request_redraw();
-                                } else if my >= 35.0 && my <= 75.0 {
+                                    navigate_tab(&mut tab_manager, &mut address_bar, &state.window, &target_url, true, &image_pipeline);
+                                } else if my >= 80.0 && my <= 120.0 {
                                     address_bar.set_text("");
                                     state.window.request_redraw();
-                                } else if my > 75.0 {
+                                } else if my > 120.0 {
                                     // 2D Point hit-testing against hyperlink bounding boxes
                                     let content_y = my + tab_manager.active_tab().scroll_y;
                                     if let Some(ref ltree) = current_layout_root {
@@ -242,35 +341,7 @@ fn main() {
                                             let current_base = tab_manager.active_tab().url.clone();
                                             let target_url = net::resolve_url(&current_base, href);
                                             println!("Hyperlink clicked: '{}' -> '{}'", href, target_url);
-                                            address_bar.set_text(&target_url);
-                                            let active_title = target_url.clone();
-                                            let body = match net::fetch(&target_url) {
-                                                Ok(resp) => {
-                                                    let raw_body = resp.body_as_string();
-                                                    let mut temp_dom = build_dom(Tokenizer::new(&raw_body).tokenize());
-                                                    let res = net::discover_resources(&temp_dom, &target_url);
-                                                    let external_css = net::ResourceLoader::fetch_all_stylesheets(&res.stylesheets);
-
-                                                    let scripts = js::JsRuntime::extract_scripts(&temp_dom);
-                                                    if !scripts.is_empty() {
-                                                        let mut runtime = js::JsRuntime::new();
-                                                        for s in &scripts {
-                                                            let _ = runtime.execute(s, &mut temp_dom);
-                                                        }
-                                                    }
-
-                                                    if !external_css.is_empty() {
-                                                        format!("<style>{}</style>{}", external_css, raw_body)
-                                                    } else {
-                                                        raw_body
-                                                    }
-                                                }
-                                                Err(err) => {
-                                                    format!("<div class='card'><h2 style='color: red;'>Fetch Error</h2><p>{}</p></div>", err)
-                                                }
-                                            };
-                                            tab_manager.active_tab_mut().navigate_to(&active_title, &target_url, &body);
-                                            state.window.request_redraw();
+                                            navigate_tab(&mut tab_manager, &mut address_bar, &state.window, &target_url, true, &image_pipeline);
                                         }
                                     }
                                 }
@@ -296,61 +367,24 @@ fn main() {
                                 Key::Named(NamedKey::ArrowLeft) => {
                                     if let Some(prev_url) = tab_manager.active_tab_mut().history.go_back() {
                                         println!("Going back to: {}", prev_url);
-                                        address_bar.set_text(&prev_url);
-                                        if let Ok(resp) = net::fetch(&prev_url) {
-                                            let active_tab = tab_manager.active_tab_mut();
-                                            active_tab.title = prev_url.clone();
-                                            active_tab.url = prev_url.clone();
-                                            active_tab.page_body = format!("<div class='card'><h2>{}</h2><p>{}</p></div>", prev_url, resp.body_as_string());
-                                        }
-                                        state.window.request_redraw();
+                                        navigate_tab(&mut tab_manager, &mut address_bar, &state.window, &prev_url, false, &image_pipeline);
                                     }
                                 }
                                 Key::Named(NamedKey::ArrowRight) => {
                                     if let Some(next_url) = tab_manager.active_tab_mut().history.go_forward() {
                                         println!("Going forward to: {}", next_url);
-                                        address_bar.set_text(&next_url);
-                                        if let Ok(resp) = net::fetch(&next_url) {
-                                            let active_tab = tab_manager.active_tab_mut();
-                                            active_tab.title = next_url.clone();
-                                            active_tab.url = next_url.clone();
-                                            active_tab.page_body = format!("<div class='card'><h2>{}</h2><p>{}</p></div>", next_url, resp.body_as_string());
-                                        }
-                                        state.window.request_redraw();
+                                        navigate_tab(&mut tab_manager, &mut address_bar, &state.window, &next_url, false, &image_pipeline);
                                     }
+                                }
+                                Key::Named(NamedKey::F5) => {
+                                    let current_url = tab_manager.active_tab().url.clone();
+                                    println!("Reloading (F5): {}", current_url);
+                                    navigate_tab(&mut tab_manager, &mut address_bar, &state.window, &current_url, false, &image_pipeline);
                                 }
                                 Key::Named(NamedKey::Enter) => {
                                     let target_url = address_bar.resolve_query();
                                     println!("Fetching: {}", target_url);
-                                    let active_title = address_bar.url_text.clone();
-                                    let body = match net::fetch(&target_url) {
-                                        Ok(resp) => {
-                                            let raw_body = resp.body_as_string();
-                                            let mut temp_dom = build_dom(Tokenizer::new(&raw_body).tokenize());
-                                            let res = net::discover_resources(&temp_dom, &target_url);
-                                            let external_css = net::ResourceLoader::fetch_all_stylesheets(&res.stylesheets);
-
-                                            // Execute embedded scripts with JsRuntime
-                                            let scripts = js::JsRuntime::extract_scripts(&temp_dom);
-                                            if !scripts.is_empty() {
-                                                let mut runtime = js::JsRuntime::new();
-                                                for s in &scripts {
-                                                    let _ = runtime.execute(s, &mut temp_dom);
-                                                }
-                                            }
-
-                                            if !external_css.is_empty() {
-                                                format!("<style>{}</style>{}", external_css, raw_body)
-                                            } else {
-                                                raw_body
-                                            }
-                                        }
-                                        Err(err) => {
-                                            format!("<div class='card'><h2 style='color: red;'>Fetch Error</h2><p>{}</p></div>", err)
-                                        }
-                                    };
-                                    tab_manager.active_tab_mut().navigate_to(&active_title, &target_url, &body);
-                                    state.window.request_redraw();
+                                    navigate_tab(&mut tab_manager, &mut address_bar, &state.window, &target_url, true, &image_pipeline);
                                 }
                                 Key::Named(NamedKey::Escape) => {
                                     address_bar.set_text("");
@@ -367,6 +401,13 @@ fn main() {
                                 Key::Named(NamedKey::Space) => {
                                     address_bar.insert_char(' ');
                                     state.window.request_redraw();
+                                }
+                                Key::Character(ch_str) if modifiers_state.control_key() => {
+                                    if ch_str.eq_ignore_ascii_case("r") {
+                                        let current_url = tab_manager.active_tab().url.clone();
+                                        println!("Reloading (Ctrl+R): {}", current_url);
+                                        navigate_tab(&mut tab_manager, &mut address_bar, &state.window, &current_url, false, &image_pipeline);
+                                    }
                                 }
                                 Key::Character(ch_str) if ch_str == "+" || ch_str == "=" => {
                                     tab_manager.active_tab_mut().zoom_in();
@@ -395,6 +436,9 @@ fn main() {
                         let suggestions_bar = address_bar.render_suggestions_html();
                         let context_menu_html = context_menu.render_html();
                         let active_tab = tab_manager.active_tab();
+                        let can_back = active_tab.history.can_go_back();
+                        let can_forward = active_tab.history.can_go_forward();
+                        let navbar_html = navbar.render_html(&address_bar.url_text, can_back, can_forward, &suggestions_bar);
                         let temp_content_dom = build_dom(Tokenizer::new(&active_tab.page_body).tokenize());
                         let devtools_html = devtools.render_html(&temp_content_dom, &active_tab.url);
 
@@ -402,11 +446,7 @@ fn main() {
                             r#"
                             <div class="page">
                                 {}
-                                <div class="navbar">
-                                    <p class="nav-title">SEARCH OR TYPE URL (Press Enter to Load | ESC to Clear):</p>
-                                    <p class="address-input">[ {} | ]</p>
-                                    {}
-                                </div>
+                                {}
                                 {}
                                 <div class="content">
                                     {}
@@ -417,8 +457,7 @@ fn main() {
                             </div>
                             "#,
                             tab_strip,
-                            address_bar.url_text,
-                            suggestions_bar,
+                            navbar_html,
                             bookmarks_bar,
                             active_tab.page_body,
                             downloads_bar,
@@ -429,6 +468,8 @@ fn main() {
                         let css_doc = r#"
                             .page { width: 780px; padding: 12px; background-color: #0f172a; }
                             .navbar { background-color: #1e293b; padding: 10px; border-width: 2px; border-color: #6366f1; margin-bottom: 8px; }
+                            .nav-controls { margin-bottom: 6px; }
+                            .nav-btn { font-size: 12px; font-weight: bold; padding: 4px 8px; margin-right: 6px; border-width: 1px; border-color: #475569; }
                             .nav-title { color: #818cf8; font-weight: bold; margin: 0; font-size: 13px; }
                             .address-input { background-color: #0f172a; color: #38bdf8; font-weight: bold; padding: 8px; margin: 4px 0 0 0; border-width: 2px; border-color: #38bdf8; }
                             .card { padding: 16px; background-color: #1e293b; border-width: 1px; border-color: #334155; margin-top: 8px; }
@@ -492,9 +533,23 @@ fn main() {
                                 }
                             }
                             let paint_commands = paint::build_display_list(&layout_root, &styles);
+
+                            // Queue any un-cached images for asynchronous fetch
+                            for cmd in &paint_commands {
+                                if let paint::PaintCommand::DrawImage { src, .. } = cmd {
+                                    if !image_pipeline.is_cached(src) {
+                                        let win = state.window.clone();
+                                        image_pipeline.queue_fetch(src, move || {
+                                            win.request_redraw();
+                                        });
+                                    }
+                                }
+                            }
+
                             current_layout_root = Some(layout_root);
                             let scroll_y = tab_manager.active_tab().scroll_y;
-                            if let Err(e) = state.render(&paint_commands, scroll_y) {
+                            let img_cache = image_pipeline.cache.lock().unwrap();
+                            if let Err(e) = state.render_with_cache(&paint_commands, scroll_y, Some(&img_cache)) {
                                 eprintln!("Render error: {:?}", e);
                             }
                         }
