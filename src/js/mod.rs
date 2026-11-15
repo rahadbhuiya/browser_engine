@@ -92,8 +92,14 @@ mod tests {
     fn test_web_worker_multithreading() {
         let worker = WebWorker::new("worker.js");
         assert!(worker.post_message("task_data").is_ok());
-        std::thread::sleep(std::time::Duration::from_millis(50));
-        let response = worker.try_recv();
+        let mut response = None;
+        for _ in 0..50 {
+            if let Some(res) = worker.try_recv() {
+                response = Some(res);
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        }
         assert_eq!(response, Some("processed: task_data".to_string()));
     }
 

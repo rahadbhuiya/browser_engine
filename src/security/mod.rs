@@ -6,6 +6,7 @@ pub mod indexeddb;
 pub mod ipc;
 pub mod sop;
 pub mod storage;
+pub mod tracker_blocker;
 
 pub use csp::CspPolicy;
 pub use geolocation::{GeoManager, GeoPosition, NotificationItem, NotificationManager};
@@ -13,6 +14,7 @@ pub use indexeddb::{IndexedDbDatabase, IndexedDbManager, ObjectStore};
 pub use ipc::{IpcChannel, IpcMessage};
 pub use sop::Origin;
 pub use storage::{Cookie, StorageManager};
+pub use tracker_blocker::{BlockedEvent, PrivacyDashboard, TrackerBlocker, TrackerCategory};
 
 #[cfg(test)]
 mod tests {
@@ -76,5 +78,13 @@ mod tests {
         let notif = NotificationManager::show_notification("Alert", "Test Message");
         assert_eq!(notif.title, "Alert");
         assert_eq!(notif.body, "Test Message");
+    }
+
+    #[test]
+    fn test_tracker_blocker_integration() {
+        let mut blocker = TrackerBlocker::new();
+        assert!(blocker.intercept("https://google-analytics.com/analytics.js"));
+        assert!(blocker.intercept("https://doubleclick.net/ad"));
+        assert_eq!(blocker.total_blocked(), 2);
     }
 }

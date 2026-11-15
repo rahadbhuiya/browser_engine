@@ -209,7 +209,12 @@ fn main() {
     let mut state = pollster::block_on(RenderState::new(window.clone()));
     let mut address_bar = ui::AddressBar::new("https://google.com");
     let mut tab_manager = ui::TabManager::new();
-    let bookmark_manager = ui::BookmarkManager::new();
+    let mut bookmark_manager = ui::BookmarkManager::load_from_disk(&ui::BookmarkManager::default_storage_path())
+        .unwrap_or_else(|_| ui::BookmarkManager::new());
+    let cookie_jar = net::CookieJar::load_from_disk(&net::CookieJar::default_storage_path())
+        .unwrap_or_else(|_| net::CookieJar::new());
+    let mut tracker_blocker = security::TrackerBlocker::new();
+    let mut privacy_dashboard = security::PrivacyDashboard::new();
     let download_manager = net::DownloadManager::new();
     let mut context_menu = ui::ContextMenu::new();
     let mut devtools = ui::DevTools::new();
@@ -225,7 +230,13 @@ fn main() {
         match event {
             Event::WindowEvent { window_id, event } if window_id == state.window.id() => {
                 match event {
-                    WindowEvent::CloseRequested => elwt.exit(),
+                    WindowEvent::CloseRequested => {
+                        cookie_jar.clear_session_cookies();
+                        let _ = cookie_jar.save_to_disk(&net::CookieJar::default_storage_path());
+                        let _ = bookmark_manager.save_to_disk(&ui::BookmarkManager::default_storage_path());
+                        println!("Session & bookmarks saved to disk. Clean shutdown.");
+                        elwt.exit();
+                    }
                     WindowEvent::Resized(physical_size) => {
                         state.resize(physical_size);
                         state.window.request_redraw();
@@ -326,6 +337,18 @@ fn main() {
                                             println!("Reload button clicked: {}", current_url);
                                             navigate_tab(&mut tab_manager, &mut address_bar, &state.window, &current_url, false, &image_pipeline);
                                         }
+                                        ui::NavAction::BookmarkToggle => {
+                                            let active = tab_manager.active_tab();
+                                            let added = bookmark_manager.toggle_bookmark(&active.title, &active.url);
+                                            println!("Bookmark toggled: {} -> {}", active.url, if added { "Bookmarked" } else { "Removed" });
+                                            let _ = bookmark_manager.save_to_disk(&ui::BookmarkManager::default_storage_path());
+                                            state.window.request_redraw();
+                                        }
+                                        ui::NavAction::PrivacyShieldToggle => {
+                                            privacy_dashboard.toggle();
+                                            println!("Privacy Shield dashboard toggled: is_open={}", privacy_dashboard.is_open);
+                                            state.window.request_redraw();
+                                        }
                                     }
                                 } else if let Some(target_url) = bookmark_manager.get_url_at_click(mx, my) {
                                     println!("Bookmark clicked: {}", target_url);
@@ -398,15 +421,66 @@ fn main() {
                                     println!("Active Title: {}", tab_manager.active_tab().title);
                                     state.window.request_redraw();
                                 }
+                                Key::Named(NamedKey::Tab) if modifiers_state.control_key() => {
+                                    if modifiers_state.shift_key() {
+                                        tab_manager.cycle_backward();
+                                        println!("Tab cycle backward (Ctrl+Shift+Tab) -> Tab #{}", tab_manager.active_index + 1);
+                                    } else {
+                                        tab_manager.cycle_forward();
+                                        println!("Tab cycle forward (Ctrl+Tab) -> Tab #{}", tab_manager.active_index + 1);
+                                    }
+                                    address_bar.set_text(&tab_manager.active_tab().url);
+                                    state.window.set_title(&format!("{} - Diaz's Secure Browser Engine", tab_manager.active_tab().title));
+                                    state.window.request_redraw();
+                                }
                                 Key::Named(NamedKey::Space) => {
                                     address_bar.insert_char(' ');
                                     state.window.request_redraw();
                                 }
                                 Key::Character(ch_str) if modifiers_state.control_key() => {
-                                    if ch_str.eq_ignore_ascii_case("r") {
-                                        let current_url = tab_manager.active_tab().url.clone();
-                                        println!("Reloading (Ctrl+R): {}", current_url);
-                                        navigate_tab(&mut tab_manager, &mut address_bar, &state.window, &current_url, false, &image_pipeline);
+                                    match ch_str.to_ascii_lowercase().as_str() {
+                                        "r" => {
+                                            let current_url = tab_manager.active_tab().url.clone();
+                                            println!("Reloading (Ctrl+R): {}", current_url);
+                                            navigate_tab(&mut tab_manager, &mut address_bar, &state.window, &current_url, false, &image_pipeline);
+                                        }
+                                        "t" => {
+                                            println!("Opening new tab (Ctrl+T)");
+                                            tab_manager.new_tab("New Tab", "https://google.com");
+                                            address_bar.set_text(&tab_manager.active_tab().url);
+                                            state.window.set_title("New Tab - Diaz's Secure Browser Engine");
+                                            state.window.request_redraw();
+                                        }
+                                        "w" => {
+                                            println!("Closing tab (Ctrl+W): #{}", tab_manager.active_index + 1);
+                                            tab_manager.close_tab(tab_manager.active_index);
+                                            address_bar.set_text(&tab_manager.active_tab().url);
+                                            state.window.set_title(&format!("{} - Diaz's Secure Browser Engine", tab_manager.active_tab().title));
+                                            state.window.request_redraw();
+                                        }
+                                        "p" => {
+                                            privacy_dashboard.toggle();
+                                            println!("Privacy Shield dashboard toggled (Ctrl+P): is_open={}", privacy_dashboard.is_open);
+                                            state.window.request_redraw();
+                                        }
+                                        "d" => {
+                                            let active = tab_manager.active_tab();
+                                            let added = bookmark_manager.toggle_bookmark(&active.title, &active.url);
+                                            println!("Bookmark toggled (Ctrl+D): {} -> {}", active.url, if added { "Bookmarked" } else { "Removed" });
+                                            let _ = bookmark_manager.save_to_disk(&ui::BookmarkManager::default_storage_path());
+                                            state.window.request_redraw();
+                                        }
+                                        "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" => {
+                                            if let Ok(num) = ch_str.parse::<usize>() {
+                                                if tab_manager.select_tab_by_number(num) {
+                                                    println!("Jumped to tab #{} (Ctrl+{})", num, num);
+                                                    address_bar.set_text(&tab_manager.active_tab().url);
+                                                    state.window.set_title(&format!("{} - Diaz's Secure Browser Engine", tab_manager.active_tab().title));
+                                                    state.window.request_redraw();
+                                                }
+                                            }
+                                        }
+                                        _ => {}
                                     }
                                 }
                                 Key::Character(ch_str) if ch_str == "+" || ch_str == "=" => {
@@ -438,13 +512,24 @@ fn main() {
                         let active_tab = tab_manager.active_tab();
                         let can_back = active_tab.history.can_go_back();
                         let can_forward = active_tab.history.can_go_forward();
-                        let navbar_html = navbar.render_html(&address_bar.url_text, can_back, can_forward, &suggestions_bar);
+                        let is_bookmarked = bookmark_manager.is_bookmarked(&active_tab.url);
+                        let blocked_trackers = tracker_blocker.total_blocked();
+                        let navbar_html = navbar.render_html(
+                            &address_bar.url_text,
+                            can_back,
+                            can_forward,
+                            is_bookmarked,
+                            blocked_trackers,
+                            &suggestions_bar,
+                        );
                         let temp_content_dom = build_dom(Tokenizer::new(&active_tab.page_body).tokenize());
                         let devtools_html = devtools.render_html(&temp_content_dom, &active_tab.url);
+                        let privacy_html = privacy_dashboard.render_html(&tracker_blocker, &active_tab.url);
 
                         let html_doc = format!(
                             r#"
                             <div class="page">
+                                {}
                                 {}
                                 {}
                                 {}
@@ -459,6 +544,7 @@ fn main() {
                             tab_strip,
                             navbar_html,
                             bookmarks_bar,
+                            privacy_html,
                             active_tab.page_body,
                             downloads_bar,
                             context_menu_html,

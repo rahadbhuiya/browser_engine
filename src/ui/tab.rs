@@ -156,11 +156,41 @@ impl TabManager {
     }
 
     pub fn close_tab(&mut self, index: usize) {
-        if self.tabs.len() > 1 && index < self.tabs.len() {
-            self.tabs.remove(index);
-            if self.active_index >= self.tabs.len() {
-                self.active_index = self.tabs.len() - 1;
+        if index < self.tabs.len() {
+            if self.tabs.len() > 1 {
+                self.tabs.remove(index);
+                if self.active_index >= self.tabs.len() {
+                    self.active_index = self.tabs.len() - 1;
+                }
+            } else {
+                self.tabs[0] = Tab::new(1, "New Tab", "https://google.com");
+                self.active_index = 0;
             }
+        }
+    }
+
+    pub fn cycle_forward(&mut self) {
+        if !self.tabs.is_empty() {
+            self.active_index = (self.active_index + 1) % self.tabs.len();
+        }
+    }
+
+    pub fn cycle_backward(&mut self) {
+        if !self.tabs.is_empty() {
+            if self.active_index == 0 {
+                self.active_index = self.tabs.len() - 1;
+            } else {
+                self.active_index -= 1;
+            }
+        }
+    }
+
+    pub fn select_tab_by_number(&mut self, number: usize) -> bool {
+        if number >= 1 && number <= self.tabs.len() {
+            self.active_index = number - 1;
+            true
+        } else {
+            false
         }
     }
 
@@ -312,5 +342,42 @@ mod tests {
         assert_eq!(tab.scroll_y, 0.0);
         assert_eq!(tab.target_scroll_y, 0.0);
         assert_eq!(tab.scroll_velocity, 0.0);
+    }
+
+    #[test]
+    fn test_tab_manager_hotkeys_cycle_and_select() {
+        let mut tm = TabManager::new();
+        tm.new_tab("GitHub", "https://github.com");
+        tm.new_tab("Rust", "https://doc.rust-lang.org");
+        assert_eq!(tm.tabs.len(), 3);
+        assert_eq!(tm.active_index, 2);
+
+        // Cycle forward: 2 -> 0 -> 1 -> 2
+        tm.cycle_forward();
+        assert_eq!(tm.active_index, 0);
+        tm.cycle_forward();
+        assert_eq!(tm.active_index, 1);
+
+        // Cycle backward: 1 -> 0 -> 2
+        tm.cycle_backward();
+        assert_eq!(tm.active_index, 0);
+        tm.cycle_backward();
+        assert_eq!(tm.active_index, 2);
+
+        // Select by 1-based number (Ctrl+1..9)
+        assert!(tm.select_tab_by_number(2));
+        assert_eq!(tm.active_index, 1);
+        assert!(!tm.select_tab_by_number(5)); // Out of range
+        assert_eq!(tm.active_index, 1);
+
+        // Close tabs until 1 tab remains
+        tm.close_tab(1);
+        assert_eq!(tm.tabs.len(), 2);
+        tm.close_tab(0);
+        assert_eq!(tm.tabs.len(), 1);
+        // Closing the only remaining tab resets it to clean start page
+        tm.close_tab(0);
+        assert_eq!(tm.tabs.len(), 1);
+        assert_eq!(tm.active_tab().url, "https://google.com");
     }
 }

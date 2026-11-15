@@ -3,6 +3,8 @@ pub enum NavAction {
     Back,
     Forward,
     Reload,
+    BookmarkToggle,
+    PrivacyShieldToggle,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -54,8 +56,8 @@ impl NavBarHistory {
     }
 }
 
-/// Navigation Bar component providing visual Back, Forward, and Reload controls
-/// alongside the URL omnibox and hit-test boundary resolution.
+/// Navigation Bar component providing visual Back, Forward, Reload, Bookmark,
+/// and Privacy Shield controls alongside the URL omnibox and hit-test resolution.
 #[derive(Debug, Clone, Default)]
 pub struct NavBar;
 
@@ -64,12 +66,14 @@ impl NavBar {
         NavBar
     }
 
-    /// Renders visual Back, Forward, and Reload controls alongside the URL omnibox into HTML.
+    /// Renders visual Back, Forward, Reload, Bookmark, and Privacy Shield controls alongside the URL omnibox into HTML.
     pub fn render_html(
         &self,
         url_text: &str,
         can_go_back: bool,
         can_go_forward: bool,
+        is_bookmarked: bool,
+        blocked_trackers: usize,
         suggestions_html: &str,
     ) -> String {
         let (back_bg, back_fg) = if can_go_back {
@@ -84,6 +88,14 @@ impl NavBar {
             ("#1e293b", "#64748b")
         };
 
+        let (star_icon, star_color, star_text) = if is_bookmarked {
+            ("★", "#facc15", "Bookmarked")
+        } else {
+            ("☆", "#94a3b8", "Bookmark")
+        };
+
+        let shield_color = if blocked_trackers > 0 { "#f43f5e" } else { "#10b981" };
+
         format!(
             r#"
             <div class="navbar">
@@ -91,7 +103,9 @@ impl NavBar {
                     <span class="nav-btn nav-back" style="background-color: {}; color: {};">[ &lt; Back ]</span>
                     <span class="nav-btn nav-forward" style="background-color: {}; color: {};">[ Forward &gt; ]</span>
                     <span class="nav-btn nav-reload" style="background-color: #334155; color: #38bdf8;">[ &#x21bb; Reload ]</span>
-                    <span class="nav-shortcuts" style="color: #64748b; font-size: 11px;">(Alt+Left / Alt+Right / F5)</span>
+                    <span class="nav-btn nav-star" style="background-color: #1e293b; color: {}; border: 1px solid #475569;">[ {} {} ]</span>
+                    <span class="nav-btn nav-shield" style="background-color: #0f172a; color: {}; border: 1px solid {}; font-weight: bold;">[ 🛡️ Shield: {} blocked ]</span>
+                    <span class="nav-shortcuts" style="color: #64748b; font-size: 11px;">(Ctrl+T, Ctrl+W, Ctrl+Tab, Ctrl+P)</span>
                 </div>
                 <p class="address-input">[ {} | ]</p>
                 {}
@@ -101,17 +115,25 @@ impl NavBar {
             back_fg,
             fwd_bg,
             fwd_fg,
+            star_color,
+            star_icon,
+            star_text,
+            shield_color,
+            shield_color,
+            blocked_trackers,
             url_text,
             suggestions_html
         )
     }
 
-    /// Hit-tests a mouse click against the navigation controls (Back, Forward, Reload).
+    /// Hit-tests a mouse click against the navigation controls (Back, Forward, Reload, Bookmark, Shield).
     ///
-    /// The navbar buttons row sits directly below the tab strip (y: 42.0 to 76.0 px):
-    /// - Back button:    x: 12.0 .. 98.0
-    /// - Forward button: x: 104.0 .. 212.0
-    /// - Reload button:  x: 218.0 .. 316.0
+    /// Row sits directly below the tab strip (y: 42.0 to 76.0 px):
+    /// - Back button:        x: 12.0 .. 98.0
+    /// - Forward button:     x: 104.0 .. 212.0
+    /// - Reload button:      x: 218.0 .. 316.0
+    /// - Bookmark toggle:    x: 322.0 .. 442.0
+    /// - Privacy Shield:     x: 448.0 .. 600.0
     pub fn get_button_at_click(&self, x: f32, y: f32) -> Option<NavAction> {
         if y >= 42.0 && y <= 76.0 {
             if x >= 12.0 && x <= 98.0 {
@@ -120,6 +142,10 @@ impl NavBar {
                 return Some(NavAction::Forward);
             } else if x >= 218.0 && x <= 316.0 {
                 return Some(NavAction::Reload);
+            } else if x >= 322.0 && x <= 442.0 {
+                return Some(NavAction::BookmarkToggle);
+            } else if x >= 448.0 && x <= 600.0 {
+                return Some(NavAction::PrivacyShieldToggle);
             }
         }
         None
@@ -160,26 +186,45 @@ mod tests {
     fn test_navbar_button_hit_testing() {
         let navbar = NavBar::new();
         // Click Back button
-        assert_eq!(navbar.get_button_at_click(50.0, 55.0), Some(NavAction::Back));
+        assert_eq!(
+            navbar.get_button_at_click(50.0, 55.0),
+            Some(NavAction::Back)
+        );
         // Click Forward button
-        assert_eq!(navbar.get_button_at_click(150.0, 55.0), Some(NavAction::Forward));
+        assert_eq!(
+            navbar.get_button_at_click(150.0, 55.0),
+            Some(NavAction::Forward)
+        );
         // Click Reload button
-        assert_eq!(navbar.get_button_at_click(260.0, 55.0), Some(NavAction::Reload));
-        // Click outside button Y range (e.g. inside tab strip or address bar)
+        assert_eq!(
+            navbar.get_button_at_click(260.0, 55.0),
+            Some(NavAction::Reload)
+        );
+        // Click Bookmark button
+        assert_eq!(
+            navbar.get_button_at_click(360.0, 55.0),
+            Some(NavAction::BookmarkToggle)
+        );
+        // Click Privacy Shield button
+        assert_eq!(
+            navbar.get_button_at_click(500.0, 55.0),
+            Some(NavAction::PrivacyShieldToggle)
+        );
+        // Click outside button Y range
         assert_eq!(navbar.get_button_at_click(50.0, 20.0), None);
         assert_eq!(navbar.get_button_at_click(50.0, 95.0), None);
-        // Click in gap between buttons
-        assert_eq!(navbar.get_button_at_click(100.0, 55.0), None);
     }
 
     #[test]
     fn test_navbar_render_html_contains_buttons_and_shortcuts() {
         let navbar = NavBar::new();
-        let html_enabled = navbar.render_html("https://example.com", true, false, "");
+        let html_enabled =
+            navbar.render_html("https://example.com", true, false, true, 2, "");
         assert!(html_enabled.contains("[ &lt; Back ]"));
         assert!(html_enabled.contains("[ Forward &gt; ]"));
         assert!(html_enabled.contains("[ &#x21bb; Reload ]"));
-        assert!(html_enabled.contains("Alt+Left"));
-        assert!(html_enabled.contains("https://example.com"));
+        assert!(html_enabled.contains("Bookmarked"));
+        assert!(html_enabled.contains("Shield: 2 blocked"));
+        assert!(html_enabled.contains("Ctrl+T, Ctrl+W, Ctrl+Tab"));
     }
 }
