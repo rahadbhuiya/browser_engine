@@ -14,7 +14,84 @@ pub fn execute_js_on_dom(script: &str, dom: &mut Dom) {
 
     vm.register_native_fn("addEventListener", move |_vm, args| {
         if args.len() >= 2 {
-            println!("JS Event: Registered listener for '{}'", args[0].to_string());
+            let event_type = args[0].to_string();
+            let handler_desc = args[1].to_string();
+            let use_capture = if args.len() >= 3 {
+                match &args[2] {
+                    Value::Boolean(b) => *b,
+                    _ => false,
+                }
+            } else {
+                false
+            };
+            println!(
+                "JS Event: Registered listener for '{}' (capture={}) -> {}",
+                event_type, use_capture, handler_desc
+            );
+        }
+        Value::Undefined
+    });
+
+    vm.register_native_fn("removeEventListener", move |_vm, args| {
+        if !args.is_empty() {
+            println!("JS Event: Removed listener for '{}'", args[0].to_string());
+        }
+        Value::Undefined
+    });
+
+    vm.register_native_fn("dispatchEvent", move |_vm, args| {
+        if !args.is_empty() {
+            let ev_type = args[0].to_string();
+            println!("JS Event: Dispatched custom event '{}'", ev_type);
+            return Value::Boolean(true);
+        }
+        Value::Boolean(false)
+    });
+
+    vm.register_native_fn("submitForm", move |_vm, args| {
+        if !args.is_empty() {
+            let target_id = args[0].to_string();
+            unsafe {
+                let dom_ref = &mut *(dom_ptr_val as *mut Dom);
+                if let Some(idx) = dom_ref.get_element_by_id(&target_id) {
+                    println!("JS Form: Submitting form #{}", target_id);
+                    let mgr = crate::dom::FormManager::new();
+                    if let Ok(payload) = crate::dom::build_form_submission(dom_ref, idx, &mgr, "https://example.com/") {
+                        return Value::String(payload.target_url);
+                    }
+                }
+            }
+        }
+        Value::Undefined
+    });
+
+    vm.register_native_fn("playMedia", move |_vm, args| {
+        if !args.is_empty() {
+            let target_id = args[0].to_string();
+            println!("JS Media: play() called on #{}", target_id);
+            return Value::Boolean(true);
+        }
+        Value::Boolean(false)
+    });
+
+    vm.register_native_fn("pauseMedia", move |_vm, args| {
+        if !args.is_empty() {
+            let target_id = args[0].to_string();
+            println!("JS Media: pause() called on #{}", target_id);
+            return Value::Boolean(true);
+        }
+        Value::Boolean(false)
+    });
+
+    vm.register_native_fn("seekMedia", move |_vm, args| {
+        if args.len() >= 2 {
+            let target_id = args[0].to_string();
+            let target_time = match &args[1] {
+                Value::Number(n) => *n,
+                _ => 0.0,
+            };
+            println!("JS Media: seek(#{}, {}s)", target_id, target_time);
+            return Value::Number(target_time);
         }
         Value::Undefined
     });
