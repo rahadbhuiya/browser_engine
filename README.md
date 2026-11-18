@@ -15,10 +15,10 @@ The engine does not rely on Chromium, WebKit, or Gecko internals. It implements 
 ---
 
 <p align="center">
-  <img src="docs/assets/browser_preview.png" alt="Browser Engine Shell & Renderer Preview" width="850">
+  <img src="docs/assets/browser_preview.png" alt="Kestrel Browser Engine Shell & Renderer Preview" width="850">
 </p>
 <p align="center">
-  <em>Live standalone browser shell: wgpu GPU compositor, custom HTML layout, Omnibox, and multi-tab manager running on Windows.</em>
+  <em>Live standalone Kestrel browser shell: wgpu GPU compositor, custom HTML layout, Omnibox, and multi-tab manager running on Windows.</em>
 </p>
 
 ---
