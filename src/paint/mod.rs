@@ -354,13 +354,24 @@ fn build_recursive(
                 let lines =
                     crate::layout::engine::wrap_text(text, lb.dimensions.content.width, char_width);
 
+                let text_align = parent_style
+                    .and_then(|s| s.get("text-align"))
+                    .map(|ta| ta.trim().to_ascii_lowercase())
+                    .unwrap_or_else(|| "left".to_string());
+
                 for (idx, line) in lines.into_iter().enumerate() {
+                    let line_w = line.chars().count() as f32 * char_width;
+                    let x_offset = match text_align.as_str() {
+                        "center" => ((lb.dimensions.content.width - line_w) / 2.0).max(0.0),
+                        "right" => (lb.dimensions.content.width - line_w).max(0.0),
+                        _ => 0.0,
+                    };
                     *order += 1;
                     items.push(LayeredCommand {
                         cmd: PaintCommand::DrawText {
                             text: line,
                             rect: Rect {
-                                x: lb.dimensions.content.x,
+                                x: lb.dimensions.content.x + x_offset,
                                 y: lb.dimensions.content.y + idx as f32 * line_height,
                                 width: lb.dimensions.content.width,
                                 height: line_height,

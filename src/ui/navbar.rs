@@ -100,14 +100,16 @@ impl NavBar {
             r#"
             <div class="navbar">
                 <div class="nav-controls">
-                    <span class="nav-btn nav-back" style="background-color: {}; color: {};">[ &lt; Back ]</span>
-                    <span class="nav-btn nav-forward" style="background-color: {}; color: {};">[ Forward &gt; ]</span>
-                    <span class="nav-btn nav-reload" style="background-color: #334155; color: #38bdf8;">[ &#x21bb; Reload ]</span>
-                    <span class="nav-btn nav-star" style="background-color: #1e293b; color: {}; border: 1px solid #475569;">[ {} {} ]</span>
-                    <span class="nav-btn nav-shield" style="background-color: #0f172a; color: {}; border: 1px solid {}; font-weight: bold;">[ 🛡️ Shield: {} blocked ]</span>
-                    <span class="nav-shortcuts" style="color: #64748b; font-size: 11px;">(Ctrl+T, Ctrl+W, Ctrl+Tab, Ctrl+P)</span>
+                    <span class="nav-btn nav-back" style="background-color: {}; color: {}; border-radius: 6px; padding: 5px 12px; margin-right: 6px; border: 1px solid #2d3748;">&lt; Back</span>
+                    <span class="nav-btn nav-forward" style="background-color: {}; color: {}; border-radius: 6px; padding: 5px 12px; margin-right: 6px; border: 1px solid #2d3748;">Forward &gt;</span>
+                    <span class="nav-btn nav-reload" style="background-color: #242c3d; color: #38bdf8; border-radius: 6px; padding: 5px 12px; margin-right: 6px; border: 1px solid #2d3748;">&#x21bb; Reload</span>
+                    <span class="nav-btn nav-star" style="background-color: #1e293b; color: {}; border: 1px solid #3b4252; border-radius: 6px; padding: 5px 12px; margin-right: 6px;">{} {}</span>
+                    <span class="nav-btn nav-shield" style="background-color: #0b0f19; color: {}; border: 1px solid {}; border-radius: 6px; padding: 5px 12px; margin-right: 6px; font-weight: bold;">Shield: {} blocked</span>
+                    <span class="nav-shortcuts" style="color: #64748b; font-size: 11px; margin-left: 8px;">(Ctrl+T, Ctrl+W, Ctrl+Tab, Ctrl+P)</span>
                 </div>
-                <p class="address-input">[ {} | ]</p>
+                <div class="address-input" style="background-color: #080c14; color: #38bdf8; border-radius: 20px; border: 1px solid #2d3748; padding: 7px 16px; margin-top: 6px; font-size: 13px; font-weight: 500;">
+                    [Secure] {} <span style="color: #60a5fa;">|</span>
+                </div>
                 {}
             </div>
             "#,
@@ -220,9 +222,9 @@ mod tests {
         let navbar = NavBar::new();
         let html_enabled =
             navbar.render_html("https://example.com", true, false, true, 2, "");
-        assert!(html_enabled.contains("[ &lt; Back ]"));
-        assert!(html_enabled.contains("[ Forward &gt; ]"));
-        assert!(html_enabled.contains("[ &#x21bb; Reload ]"));
+        assert!(html_enabled.contains("&lt; Back"));
+        assert!(html_enabled.contains("Forward &gt;"));
+        assert!(html_enabled.contains("&#x21bb; Reload"));
         assert!(html_enabled.contains("Bookmarked"));
         assert!(html_enabled.contains("Shield: 2 blocked"));
         assert!(html_enabled.contains("Ctrl+T, Ctrl+W, Ctrl+Tab"));

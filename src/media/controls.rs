@@ -255,7 +255,7 @@ impl MediaControls {
         });
 
         // 8. Mute / Volume icon
-        let vol_glyph = if state.muted || state.volume == 0.0 { "🔇" } else { "🔊" };
+        let vol_glyph = if state.muted || state.volume == 0.0 { "[M]" } else { "[V]" };
         cmds.push(PaintCommand::DrawText {
             text: vol_glyph.to_string(),
             rect: self.mute_rect,

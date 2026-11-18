@@ -39,7 +39,7 @@ fn layout_box(
 ) {
     match layout_box_ref.box_type {
         BoxType::Block(node_idx) => layout_block(layout_box_ref, containing_block, styles, node_idx),
-        BoxType::Anonymous => layout_anonymous_text(layout_box_ref, containing_block),
+        BoxType::Anonymous => layout_anonymous_text(layout_box_ref, containing_block, None),
     }
 }
 
@@ -112,16 +112,21 @@ pub fn wrap_text(text: &str, max_width: f32, char_width: f32) -> Vec<String> {
         }
         let words = trimmed.split_whitespace();
         let mut current_line = String::new();
+        let mut current_len = 0;
 
         for word in words {
+            let word_len = word.chars().count();
             if current_line.is_empty() {
                 current_line.push_str(word);
-            } else if current_line.chars().count() + 1 + word.chars().count() <= max_chars {
+                current_len = word_len;
+            } else if current_len + 1 + word_len <= max_chars {
                 current_line.push(' ');
                 current_line.push_str(word);
+                current_len += 1 + word_len;
             } else {
                 lines.push(current_line);
                 current_line = word.to_string();
+                current_len = word_len;
             }
         }
         if !current_line.is_empty() {
@@ -154,7 +159,12 @@ fn layout_block(
         .map(|w| parse_length(w, containing_width))
         .or_else(|| lb.image_data.as_ref().and_then(|img| img.width));
 
-    let used_width = explicit_width.unwrap_or_else(|| {
+    let max_width = style
+        .and_then(|s| s.get("max-width"))
+        .filter(|w| w.as_str() != "none")
+        .map(|w| parse_length(w, containing_width));
+
+    let mut used_width = explicit_width.unwrap_or_else(|| {
         if lb.image_data.is_some() {
             300.0f32.min(containing_width).max(20.0)
         } else {
@@ -168,6 +178,12 @@ fn layout_block(
                 .max(0.0)
         }
     });
+
+    if let Some(mw) = max_width {
+        if mw > 0.0 && used_width > mw {
+            used_width = mw;
+        }
+    }
     lb.dimensions.content.width = used_width;
 
     // Check for margin: auto centering
@@ -188,7 +204,7 @@ fn layout_block(
             .map(|m| m.contains("auto"))
             .unwrap_or(false);
 
-    if margin_left_auto && margin_right_auto && explicit_width.is_some() {
+    if margin_left_auto && margin_right_auto && (explicit_width.is_some() || max_width.is_some()) {
         let free_space = (containing_width
             - used_width
             - lb.dimensions.border.left
@@ -267,7 +283,7 @@ fn layout_block(
     let children_height = if is_flex {
         layout_flex_children(lb, style, styles)
     } else {
-        layout_block_children(lb, styles)
+        layout_block_children(lb, style, styles)
     };
 
     let explicit_height = style
@@ -285,11 +301,18 @@ fn layout_block(
     lb.dimensions.content.height = explicit_height.unwrap_or(fallback_height);
 }
 
-fn layout_block_children(lb: &mut LayoutBox, styles: &HashMap<usize, ComputedStyle>) -> f32 {
+fn layout_block_children(
+    lb: &mut LayoutBox,
+    parent_style: Option<&ComputedStyle>,
+    styles: &HashMap<usize, ComputedStyle>,
+) -> f32 {
     let mut cursor = lb.dimensions;
     cursor.content.height = 0.0;
     for child in &mut lb.children {
-        layout_box(child, cursor, styles);
+        match child.box_type {
+            BoxType::Block(idx) => layout_block(child, cursor, styles, idx),
+            BoxType::Anonymous => layout_anonymous_text(child, cursor, parent_style),
+        }
         let is_out_of_flow = match child.box_type {
             BoxType::Block(idx) => styles
                 .get(&idx)
@@ -405,12 +428,31 @@ fn layout_flex_children(
     }
 }
 
-fn layout_anonymous_text(lb: &mut LayoutBox, containing_block: Dimensions) {
+fn layout_anonymous_text(
+    lb: &mut LayoutBox,
+    containing_block: Dimensions,
+    parent_style: Option<&ComputedStyle>,
+) {
     lb.dimensions.content.x = containing_block.content.x;
     lb.dimensions.content.y = containing_block.content.y + containing_block.content.height;
     lb.dimensions.content.width = containing_block.content.width;
 
+    let font_size = parent_style
+        .and_then(|s| s.get("font-size"))
+        .and_then(|fs| {
+            let fs_trimmed = fs.trim();
+            if let Some(stripped) = fs_trimmed.strip_suffix("px") {
+                stripped.trim().parse::<f32>().ok()
+            } else {
+                fs_trimmed.parse::<f32>().ok()
+            }
+        })
+        .unwrap_or(16.0);
+
+    let char_width = 8.0 * (font_size / 16.0);
+    let line_height = 18.0 * (font_size / 16.0);
+
     let text = lb.text_content.as_deref().unwrap_or("");
-    let lines = wrap_text(text, containing_block.content.width, AVG_CHAR_WIDTH_PX);
-    lb.dimensions.content.height = (lines.len() as f32 * LINE_HEIGHT_PX).max(LINE_HEIGHT_PX);
+    let lines = wrap_text(text, containing_block.content.width, char_width);
+    lb.dimensions.content.height = (lines.len() as f32 * line_height).max(line_height);
 }

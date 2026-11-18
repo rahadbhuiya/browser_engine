@@ -522,20 +522,44 @@ impl RenderState {
         let mut text_sections = Vec::new();
         let mut image_draws: Vec<([f32; 2], [f32; 2], String)> = Vec::new();
 
+        const CONTENT_TOP: f32 = 100.0; // TOTAL_CHROME_HEIGHT
+
         for cmd in paint_commands {
             match cmd {
                 PaintCommand::DrawRect { rect, color, border_radius, is_fixed } => {
-                    let y_pos = if *is_fixed { rect.y } else { rect.y - scroll_y };
-                    instances.push(InstanceRaw {
-                        position: [rect.x, y_pos],
-                        size: [rect.width, rect.height],
-                        color: [color.r, color.g, color.b, color.a],
-                        corner_radius: *border_radius,
-                        _padding: [0.0; 3],
-                    });
+                    let y_pos = if *is_fixed { rect.y } else { CONTENT_TOP + rect.y - scroll_y };
+                    if !*is_fixed {
+                        if y_pos + rect.height <= CONTENT_TOP {
+                            continue;
+                        }
+                        let actual_y = y_pos.max(CONTENT_TOP);
+                        let diff = actual_y - y_pos;
+                        let actual_h = (rect.height - diff).max(0.0);
+                        if actual_h <= 0.0 {
+                            continue;
+                        }
+                        instances.push(InstanceRaw {
+                            position: [rect.x, actual_y],
+                            size: [rect.width, actual_h],
+                            color: [color.r, color.g, color.b, color.a],
+                            corner_radius: *border_radius,
+                            _padding: [0.0; 3],
+                        });
+                    } else {
+                        instances.push(InstanceRaw {
+                            position: [rect.x, y_pos],
+                            size: [rect.width, rect.height],
+                            color: [color.r, color.g, color.b, color.a],
+                            corner_radius: *border_radius,
+                            _padding: [0.0; 3],
+                        });
+                    }
                 }
                 PaintCommand::DrawText { text, rect, color, font_size, is_fixed } => {
-                    let y_pos = if *is_fixed { rect.y } else { rect.y - scroll_y };
+                    let y_pos = if *is_fixed { rect.y } else { CONTENT_TOP + rect.y - scroll_y };
+                    if !*is_fixed && y_pos < CONTENT_TOP {
+                        continue;
+                    }
                     text_sections.push((
                         text.clone(),
                         [rect.x, y_pos],
@@ -544,7 +568,17 @@ impl RenderState {
                     ));
                 }
                 PaintCommand::DrawImage { rect, src, alt, is_fixed } => {
-                    let y_pos = if *is_fixed { rect.y } else { rect.y - scroll_y };
+                    let y_pos = if *is_fixed { rect.y } else { CONTENT_TOP + rect.y - scroll_y };
+                    if !*is_fixed && y_pos + rect.height <= CONTENT_TOP {
+                        continue;
+                    }
+                    let actual_y = if !*is_fixed { y_pos.max(CONTENT_TOP) } else { y_pos };
+                    let diff = actual_y - y_pos;
+                    let actual_h = if !*is_fixed { (rect.height - diff).max(0.0) } else { rect.height };
+                    if actual_h <= 0.0 {
+                        continue;
+                    }
+
                     let decoded_opt = external_cache
                         .and_then(|c| c.get(src))
                         .or_else(|| self.image_cache.get(src))
@@ -552,23 +586,25 @@ impl RenderState {
 
                     if let Some(decoded) = decoded_opt {
                         self.ensure_texture_uploaded(src, &decoded);
-                        image_draws.push(([rect.x, y_pos], [rect.width, rect.height], src.clone()));
+                        image_draws.push(([rect.x, actual_y], [rect.width, actual_h], src.clone()));
                     } else {
                         // Fallback placeholder box and label while loading
                         instances.push(InstanceRaw {
-                            position: [rect.x, y_pos],
-                            size: [rect.width, rect.height],
+                            position: [rect.x, actual_y],
+                            size: [rect.width, actual_h],
                             color: [0.12, 0.16, 0.23, 1.0],
                             corner_radius: 6.0,
                             _padding: [0.0; 3],
                         });
-                        let label = format!("Image [{}]", if alt.is_empty() { "Graphic" } else { alt });
-                        text_sections.push((
-                            label,
-                            [rect.x + 8.0, y_pos + 8.0],
-                            Color::new(0.22, 0.74, 0.97, 1.0),
-                            14.0,
-                        ));
+                        if actual_y >= CONTENT_TOP {
+                            let label = format!("Image [{}]", if alt.is_empty() { "Graphic" } else { alt });
+                            text_sections.push((
+                                label,
+                                [rect.x + 8.0, actual_y + 8.0],
+                                Color::new(0.22, 0.74, 0.97, 1.0),
+                                14.0,
+                            ));
+                        }
                     }
                 }
             }

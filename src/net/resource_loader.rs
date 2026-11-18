@@ -15,7 +15,11 @@ pub struct DiscoveredResources {
 /// Resolves a relative URL or path against a base page URL.
 pub fn resolve_url(base_url: &str, relative_path: &str) -> String {
     let rel = relative_path.trim();
-    if rel.starts_with("http://") || rel.starts_with("https://") {
+    if rel.starts_with("http://")
+        || rel.starts_with("https://")
+        || rel.starts_with("kestrel://")
+        || rel.starts_with("about:")
+    {
         return rel.to_string();
     }
     if rel.starts_with("//") {
