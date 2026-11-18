@@ -24,26 +24,14 @@ impl Tab {
             id,
             title: title.to_string(),
             url: url.to_string(),
-            page_body: format!(
-                r#"
-                <div style="background-color: #0b0f19; padding: 30px 16px; text-align: center;">
-                    <h1 style="color: #60a5fa; font-size: 32px; margin-bottom: 8px;">Secure Rust Browser Engine</h1>
-                    <p style="color: #9ca3af; font-size: 15px; margin-bottom: 24px;">Modular Web Browser Engine Built from Scratch in Pure Rust | GPU Accelerated | Custom JS Runtime</p>
-                    
-                    <div class="card" style="background-color: #111827; border-radius: 12px; padding: 20px; border: 1px solid #1f2937; margin-bottom: 16px;">
-                        <p style="color: #38bdf8; font-weight: bold; font-size: 16px; margin-bottom: 10px;">SPEED DIAL &amp; QUICK LINKS</p>
-                        <p style="color: #e2e8f0; font-size: 14px; margin: 8px 0;">
-                            <a href="https://google.com" style="color: #38bdf8; margin: 0 6px;">[ Google ]</a>
-                            <a href="https://github.com" style="color: #38bdf8; margin: 0 6px;">[ GitHub ]</a>
-                            <a href="https://youtube.com" style="color: #38bdf8; margin: 0 6px;">[ YouTube ]</a>
-                            <a href="https://doc.rust-lang.org" style="color: #38bdf8; margin: 0 6px;">[ Rust Docs ]</a>
-                            <a href="https://wikipedia.org" style="color: #38bdf8; margin: 0 6px;">[ Wikipedia ]</a>
-                        </p>
-                        <p style="color: #6b7280; font-size: 13px; margin-top: 10px;">Click any link or type a URL in the Omnibox above to navigate.</p>
-                    </div>
-                </div>
-                "#
-            ),
+            page_body: {
+                let bm = super::bookmarks::BookmarkManager::new();
+                if let Some((_, html)) = super::internal_pages::render_internal_page(url, &bm, &history) {
+                    html
+                } else {
+                    super::internal_pages::render_internal_page("kestrel://newtab", &bm, &history).unwrap().1
+                }
+            },
             scroll_y: 0.0,
             target_scroll_y: 0.0,
             scroll_velocity: 0.0,
@@ -134,7 +122,7 @@ pub struct TabManager {
 
 impl TabManager {
     pub fn new() -> Self {
-        let default_tab = Tab::new(1, "New Tab", "https://google.com");
+        let default_tab = Tab::new(1, "New Tab", "kestrel://newtab");
         TabManager {
             tabs: vec![default_tab],
             active_index: 0,
@@ -163,7 +151,7 @@ impl TabManager {
                     self.active_index = self.tabs.len() - 1;
                 }
             } else {
-                self.tabs[0] = Tab::new(1, "New Tab", "https://google.com");
+                self.tabs[0] = Tab::new(1, "New Tab", "kestrel://newtab");
                 self.active_index = 0;
             }
         }
@@ -210,24 +198,30 @@ impl TabManager {
 
     pub fn render_tab_strip_html(&self) -> String {
         let mut html = String::from(
-            r#"<div class="tab-strip" style="background-color: #0b0f19; padding: 6px 16px 0 16px; border-bottom: 1px solid #1f2937;">"#,
+            r#"<div class="tab-strip" style="background-color: #080b11; padding: 6px 12px 0 12px; border-bottom: 1px solid #1e2433;">"#,
         );
         for (i, tab) in self.tabs.iter().enumerate() {
             let is_active = i == self.active_index;
-            let bg_color = if is_active { "#111827" } else { "#0b0f19" };
-            let text_color = if is_active { "#38bdf8" } else { "#9ca3af" };
+            let bg_color = if is_active { "#131824" } else { "#0b0e17" };
+            let text_color = if is_active { "#38bdf8" } else { "#8b949e" };
             let border = if is_active {
-                "1px solid #374151"
+                "border-top: 2px solid #38bdf8; border-left: 1px solid #2d3748; border-right: 1px solid #2d3748;"
             } else {
-                "1px solid transparent"
+                "border: 1px solid #1a202c;"
+            };
+
+            let display_title = if tab.title.len() > 30 {
+                format!("{}...", &tab.title[..27])
+            } else {
+                tab.title.clone()
             };
 
             html.push_str(&format!(
-                r#"<span style="background-color: {}; color: {}; border: {}; border-radius: 6px 6px 0 0; padding: 6px 14px; margin-right: 4px; font-weight: bold; font-size: 13px;">[{}] {}  [x]</span>"#,
-                bg_color, text_color, border, i + 1, tab.title
+                r#"<span style="background-color: {}; color: {}; {}; border-radius: 6px 6px 0 0; padding: 6px 14px; margin-right: 4px; font-weight: bold; font-size: 13px;">{}  &times;</span>"#,
+                bg_color, text_color, border, display_title
             ));
         }
-        html.push_str(r#"<span style="background-color: #1f2937; color: #10b981; border: 1px solid #374151; border-radius: 4px; padding: 4px 10px; font-weight: bold; font-size: 13px;">[+]</span></div>"#);
+        html.push_str(r#"<span style="background-color: #1a202c; color: #cbd5e1; border: 1px solid #2d3748; border-radius: 4px; padding: 4px 10px; font-weight: bold; font-size: 14px;">+</span></div>"#);
         html
     }
 
@@ -378,6 +372,6 @@ mod tests {
         // Closing the only remaining tab resets it to clean start page
         tm.close_tab(0);
         assert_eq!(tm.tabs.len(), 1);
-        assert_eq!(tm.active_tab().url, "https://google.com");
+        assert_eq!(tm.active_tab().url, "kestrel://newtab");
     }
 }

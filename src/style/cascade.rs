@@ -36,6 +36,24 @@ struct MatchedDecl<'a> {
     value: &'a str,
 }
 
+fn parse_inline_style(style_str: &str) -> Vec<(String, String)> {
+    let mut decls = Vec::new();
+    for part in style_str.split(';') {
+        let part = part.trim();
+        if part.is_empty() {
+            continue;
+        }
+        if let Some((prop, val)) = part.split_once(':') {
+            let p = prop.trim().to_ascii_lowercase();
+            let v = val.trim().to_string();
+            if !p.is_empty() && !v.is_empty() {
+                decls.push((p, v));
+            }
+        }
+    }
+    decls
+}
+
 pub fn compute_styles(dom: &Dom, stylesheet: &Stylesheet) -> HashMap<usize, ComputedStyle> {
     let mut result = HashMap::new();
     compute_recursive(dom, dom.root, stylesheet, None, &mut result);
@@ -49,7 +67,7 @@ fn compute_recursive(
     parent_style: Option<&ComputedStyle>,
     result: &mut HashMap<usize, ComputedStyle>,
 ) {
-    if let NodeType::Element(_) = &dom.nodes[node_idx].node_type {
+    if let NodeType::Element(el) = &dom.nodes[node_idx].node_type {
         let own = resolve_own_declarations(dom, node_idx, stylesheet);
         let mut style = ComputedStyle::new();
 
@@ -64,6 +82,13 @@ fn compute_recursive(
         // 2. apply this element's own cascaded declarations
         for (k, v) in own {
             style.insert(k, v);
+        }
+
+        // 3. apply inline style="..." attribute (highest cascade priority)
+        if let Some(inline_str) = el.get_attribute("style") {
+            for (k, v) in parse_inline_style(inline_str) {
+                style.insert(k, v);
+            }
         }
 
         result.insert(node_idx, style);

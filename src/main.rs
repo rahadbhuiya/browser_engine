@@ -59,7 +59,7 @@ pub fn fetch_and_render_page(url_str: &str) -> (dom::Dom, Vec<paint::PaintComman
             }
         }
     } else {
-        css_source.push_str(r#".page { width: 400px; padding: 10px; } .title { color: #00f; }"#);
+        css_source.push_str(r#".page { width: 100%; margin: 0; padding: 16px; } .title { color: #38bdf8; }"#);
     }
 
     // Baseline so a page that ships zero CSS still isn't completely bare;
@@ -162,13 +162,18 @@ fn navigate_tab(
             ),
         }
     } else {
-        (
-            "Diaz's Secure Browser Engine".to_string(),
-            r#"<div class="page"><h1 class="title">Secure Browser Engine</h1><p>Type a search query or URL and press Enter to search!</p></div>"#.to_string(),
-        )
+        let bm = ui::BookmarkManager::load_from_disk(&ui::BookmarkManager::default_storage_path())
+            .unwrap_or_else(|_| ui::BookmarkManager::new());
+        ui::render_internal_page(&resolved_url, &bm, &tab_manager.active_tab().history)
+            .unwrap_or_else(|| {
+                (
+                    "Kestrel".to_string(),
+                    ui::render_internal_page("kestrel://newtab", &bm, &tab_manager.active_tab().history).unwrap().1,
+                )
+            })
     };
 
-    window.set_title(&format!("{} - Diaz's Secure Browser Engine", title));
+    window.set_title(&format!("{} - Kestrel", title));
 
     let tab = tab_manager.active_tab_mut();
     if is_new {
@@ -186,7 +191,7 @@ fn navigate_tab(
 
 #[cfg(not(test))]
 fn main() {
-    println!("=== Diaz's Secure Browser Engine ===");
+    println!("=== Kestrel Browser (Exploidus) ===");
     println!("Starting GPU-accelerated window...");
 
     use std::sync::Arc;
@@ -200,14 +205,14 @@ fn main() {
     let event_loop = EventLoop::new().unwrap();
     let window = Arc::new(
         WindowBuilder::new()
-            .with_title("Diaz's Secure Browser Engine")
+            .with_title("Kestrel")
             .with_inner_size(winit::dpi::PhysicalSize::new(1024, 720))
             .build(&event_loop)
             .unwrap(),
     );
 
     let mut state = pollster::block_on(RenderState::new(window.clone()));
-    let mut address_bar = ui::AddressBar::new("https://google.com");
+    let mut address_bar = ui::AddressBar::new("kestrel://newtab");
     let mut tab_manager = ui::TabManager::new();
     let mut bookmark_manager = ui::BookmarkManager::load_from_disk(&ui::BookmarkManager::default_storage_path())
         .unwrap_or_else(|_| ui::BookmarkManager::new());
@@ -218,7 +223,7 @@ fn main() {
     let download_manager = net::DownloadManager::new();
     let mut context_menu = ui::ContextMenu::new();
     let mut devtools = ui::DevTools::new();
-    let navbar = ui::NavBar::new();
+    let _navbar = ui::NavBar::new();
     let image_pipeline = net::AsyncImagePipeline::new();
     let mut modifiers_state = winit::keyboard::ModifiersState::default();
     let mut mouse_pos = (0.0f32, 0.0f32);
@@ -301,70 +306,84 @@ fn main() {
                                     }
                                     context_menu.hide();
                                     state.window.request_redraw();
-                                } else if let Some(close_idx) = tab_manager.get_close_click(mx, my) {
-                                    println!("Closing tab: {}", close_idx);
-                                    tab_manager.close_tab(close_idx);
-                                    address_bar.set_text(&tab_manager.active_tab().url);
-                                    state.window.set_title(&format!("{} - Diaz's Secure Browser Engine", tab_manager.active_tab().title));
-                                    state.window.request_redraw();
-                                } else if tab_manager.is_new_tab_click(mx, my) {
-                                    println!("Opening new tab");
-                                    tab_manager.new_tab("New Tab", "https://google.com");
-                                    address_bar.set_text(&tab_manager.active_tab().url);
-                                    state.window.set_title("New Tab - Diaz's Secure Browser Engine");
-                                    state.window.request_redraw();
-                                } else if let Some(tab_idx) = tab_manager.get_tab_at_click(mx, my) {
-                                    tab_manager.switch_tab(tab_idx);
-                                    address_bar.set_text(&tab_manager.active_tab().url);
-                                    state.window.set_title(&format!("{} - Diaz's Secure Browser Engine", tab_manager.active_tab().title));
-                                    state.window.request_redraw();
-                                } else if let Some(action) = navbar.get_button_at_click(mx, my) {
-                                    match action {
-                                        ui::NavAction::Back => {
+                                } else {
+                                    let viewport_width = state.size.width as f32;
+                                    let chrome_action = ui::hit_test_chrome(mx, my, viewport_width, &tab_manager, &bookmark_manager);
+                                    match chrome_action {
+                                        ui::ChromeClick::Tab(idx) => {
+                                            tab_manager.switch_tab(idx);
+                                            address_bar.set_text(&tab_manager.active_tab().url);
+                                            state.window.set_title(&format!("{} - Kestrel", tab_manager.active_tab().title));
+                                            state.window.request_redraw();
+                                        }
+                                        ui::ChromeClick::CloseTab(close_idx) => {
+                                            println!("Closing tab: {}", close_idx);
+                                            tab_manager.close_tab(close_idx);
+                                            address_bar.set_text(&tab_manager.active_tab().url);
+                                            state.window.set_title(&format!("{} - Kestrel", tab_manager.active_tab().title));
+                                            state.window.request_redraw();
+                                        }
+                                        ui::ChromeClick::NewTab => {
+                                            println!("Opening new tab");
+                                            tab_manager.new_tab("New Tab", "kestrel://newtab");
+                                            address_bar.set_text(&tab_manager.active_tab().url);
+                                            state.window.set_title("New Tab - Kestrel");
+                                            state.window.request_redraw();
+                                        }
+                                        ui::ChromeClick::Back => {
                                             if let Some(prev) = tab_manager.active_tab_mut().history.go_back() {
                                                 println!("Back button clicked: {}", prev);
                                                 navigate_tab(&mut tab_manager, &mut address_bar, &state.window, &prev, false, &image_pipeline);
                                             }
                                         }
-                                        ui::NavAction::Forward => {
+                                        ui::ChromeClick::Forward => {
                                             if let Some(next) = tab_manager.active_tab_mut().history.go_forward() {
                                                 println!("Forward button clicked: {}", next);
                                                 navigate_tab(&mut tab_manager, &mut address_bar, &state.window, &next, false, &image_pipeline);
                                             }
                                         }
-                                        ui::NavAction::Reload => {
+                                        ui::ChromeClick::Reload => {
                                             let current_url = tab_manager.active_tab().url.clone();
                                             println!("Reload button clicked: {}", current_url);
                                             navigate_tab(&mut tab_manager, &mut address_bar, &state.window, &current_url, false, &image_pipeline);
                                         }
-                                        ui::NavAction::BookmarkToggle => {
+                                        ui::ChromeClick::Omnibox => {
+                                            address_bar.set_text("");
+                                            state.window.request_redraw();
+                                        }
+                                        ui::ChromeClick::BookmarkToggle => {
                                             let active = tab_manager.active_tab();
                                             let added = bookmark_manager.toggle_bookmark(&active.title, &active.url);
                                             println!("Bookmark toggled: {} -> {}", active.url, if added { "Bookmarked" } else { "Removed" });
                                             let _ = bookmark_manager.save_to_disk(&ui::BookmarkManager::default_storage_path());
                                             state.window.request_redraw();
                                         }
-                                        ui::NavAction::PrivacyShieldToggle => {
+                                        ui::ChromeClick::ShieldToggle => {
                                             privacy_dashboard.toggle();
                                             println!("Privacy Shield dashboard toggled: is_open={}", privacy_dashboard.is_open);
                                             state.window.request_redraw();
                                         }
-                                    }
-                                } else if let Some(target_url) = bookmark_manager.get_url_at_click(mx, my) {
-                                    println!("Bookmark clicked: {}", target_url);
-                                    navigate_tab(&mut tab_manager, &mut address_bar, &state.window, &target_url, true, &image_pipeline);
-                                } else if my >= 80.0 && my <= 120.0 {
-                                    address_bar.set_text("");
-                                    state.window.request_redraw();
-                                } else if my > 120.0 {
-                                    // 2D Point hit-testing against hyperlink bounding boxes
-                                    let content_y = my + tab_manager.active_tab().scroll_y;
-                                    if let Some(ref ltree) = current_layout_root {
-                                        if let Some(href) = ltree.hit_test_link(mx, content_y) {
-                                            let current_base = tab_manager.active_tab().url.clone();
-                                            let target_url = net::resolve_url(&current_base, href);
-                                            println!("Hyperlink clicked: '{}' -> '{}'", href, target_url);
+                                        ui::ChromeClick::DevToolsToggle => {
+                                            devtools.toggle();
+                                            println!("DevTools toggled: is_open={}", devtools.is_open);
+                                            state.window.request_redraw();
+                                        }
+                                        ui::ChromeClick::BookmarkUrl(target_url) => {
+                                            println!("Bookmark clicked: {}", target_url);
                                             navigate_tab(&mut tab_manager, &mut address_bar, &state.window, &target_url, true, &image_pipeline);
+                                        }
+                                        ui::ChromeClick::None => {
+                                            if my > ui::TOTAL_CHROME_HEIGHT {
+                                                let content_y = (my - ui::TOTAL_CHROME_HEIGHT) + tab_manager.active_tab().scroll_y;
+                                                if let Some(ref ltree) = current_layout_root {
+                                                    if let Some(href) = ltree.hit_test_link(mx, content_y) {
+                                                        let current_base = tab_manager.active_tab().url.clone();
+                                                        let target_url = net::resolve_url(&current_base, href);
+                                                        println!("Hyperlink clicked: '{}' -> '{}'", href, target_url);
+                                                        navigate_tab(&mut tab_manager, &mut address_bar, &state.window, &target_url, true, &image_pipeline);
+                                                    }
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -430,7 +449,7 @@ fn main() {
                                         println!("Tab cycle forward (Ctrl+Tab) -> Tab #{}", tab_manager.active_index + 1);
                                     }
                                     address_bar.set_text(&tab_manager.active_tab().url);
-                                    state.window.set_title(&format!("{} - Diaz's Secure Browser Engine", tab_manager.active_tab().title));
+                                    state.window.set_title(&format!("{} - Kestrel", tab_manager.active_tab().title));
                                     state.window.request_redraw();
                                 }
                                 Key::Named(NamedKey::Space) => {
@@ -446,16 +465,16 @@ fn main() {
                                         }
                                         "t" => {
                                             println!("Opening new tab (Ctrl+T)");
-                                            tab_manager.new_tab("New Tab", "https://google.com");
+                                            tab_manager.new_tab("New Tab", "kestrel://newtab");
                                             address_bar.set_text(&tab_manager.active_tab().url);
-                                            state.window.set_title("New Tab - Diaz's Secure Browser Engine");
+                                            state.window.set_title("New Tab - Kestrel");
                                             state.window.request_redraw();
                                         }
                                         "w" => {
                                             println!("Closing tab (Ctrl+W): #{}", tab_manager.active_index + 1);
                                             tab_manager.close_tab(tab_manager.active_index);
                                             address_bar.set_text(&tab_manager.active_tab().url);
-                                            state.window.set_title(&format!("{} - Diaz's Secure Browser Engine", tab_manager.active_tab().title));
+                                            state.window.set_title(&format!("{} - Kestrel", tab_manager.active_tab().title));
                                             state.window.request_redraw();
                                         }
                                         "p" => {
@@ -475,7 +494,7 @@ fn main() {
                                                 if tab_manager.select_tab_by_number(num) {
                                                     println!("Jumped to tab #{} (Ctrl+{})", num, num);
                                                     address_bar.set_text(&tab_manager.active_tab().url);
-                                                    state.window.set_title(&format!("{} - Diaz's Secure Browser Engine", tab_manager.active_tab().title));
+                                                    state.window.set_title(&format!("{} - Kestrel", tab_manager.active_tab().title));
                                                     state.window.request_redraw();
                                                 }
                                             }
@@ -504,35 +523,17 @@ fn main() {
                         }
                     }
                     WindowEvent::RedrawRequested => {
-                        let tab_strip = tab_manager.render_tab_strip_html();
-                        let bookmarks_bar = bookmark_manager.render_bookmarks_bar_html();
-                        let downloads_bar = download_manager.render_downloads_bar_html();
-                        let suggestions_bar = address_bar.render_suggestions_html();
-                        let context_menu_html = context_menu.render_html();
                         let active_tab = tab_manager.active_tab();
-                        let can_back = active_tab.history.can_go_back();
-                        let can_forward = active_tab.history.can_go_forward();
                         let is_bookmarked = bookmark_manager.is_bookmarked(&active_tab.url);
                         let blocked_trackers = tracker_blocker.total_blocked();
-                        let navbar_html = navbar.render_html(
-                            &address_bar.url_text,
-                            can_back,
-                            can_forward,
-                            is_bookmarked,
-                            blocked_trackers,
-                            &suggestions_bar,
-                        );
                         let temp_content_dom = build_dom(Tokenizer::new(&active_tab.page_body).tokenize());
                         let devtools_html = devtools.render_html(&temp_content_dom, &active_tab.url);
                         let privacy_html = privacy_dashboard.render_html(&tracker_blocker, &active_tab.url);
+                        let context_menu_html = context_menu.render_html();
 
                         let html_doc = format!(
                             r#"
                             <div class="page">
-                                {}
-                                {}
-                                {}
-                                {}
                                 <div class="content">
                                     {}
                                 </div>
@@ -541,24 +542,23 @@ fn main() {
                                 {}
                             </div>
                             "#,
-                            tab_strip,
-                            navbar_html,
-                            bookmarks_bar,
-                            privacy_html,
                             active_tab.page_body,
-                            downloads_bar,
+                            privacy_html,
                             context_menu_html,
                             devtools_html
                         );
 
                         let css_doc = r#"
-                            .page { width: 780px; padding: 12px; background-color: #0f172a; }
-                            .navbar { background-color: #1e293b; padding: 10px; border-width: 2px; border-color: #6366f1; margin-bottom: 8px; }
+                            .page { width: 100%; margin: 0; padding: 0; background-color: #080b11; }
+                            .tab-strip { background-color: #080b11; padding: 6px 12px 0 12px; border-bottom: 1px solid #1e2433; }
+                            .navbar { background-color: #131824; padding: 8px 14px; border-bottom: 1px solid #1e2433; margin: 0; }
                             .nav-controls { margin-bottom: 6px; }
-                            .nav-btn { font-size: 12px; font-weight: bold; padding: 4px 8px; margin-right: 6px; border-width: 1px; border-color: #475569; }
+                            .nav-btn { font-size: 12px; font-weight: bold; padding: 5px 12px; margin-right: 6px; border-radius: 6px; border: 1px solid #2d3748; }
                             .nav-title { color: #818cf8; font-weight: bold; margin: 0; font-size: 13px; }
-                            .address-input { background-color: #0f172a; color: #38bdf8; font-weight: bold; padding: 8px; margin: 4px 0 0 0; border-width: 2px; border-color: #38bdf8; }
-                            .card { padding: 16px; background-color: #1e293b; border-width: 1px; border-color: #334155; margin-top: 8px; }
+                            .address-input { background-color: #080c14; color: #38bdf8; font-size: 13px; font-weight: 500; padding: 7px 16px; margin: 4px 0 0 0; border-radius: 20px; border: 1px solid #2d3748; }
+                            .bookmarks-bar { background-color: #0d121c; padding: 6px 16px; border-bottom: 1px solid #1a2230; font-size: 12px; }
+                            .content { width: 100%; min-height: 500px; background-color: #080b11; }
+                            .card { padding: 20px; background-color: #111827; border-radius: 12px; border: 1px solid #1f2937; margin: 16px; }
                             p { color: #cbd5e1; font-size: 15px; margin: 6px 0; }
                             h2 { color: #f8fafc; margin: 4px 0; }
                             .devtools-panel { background-color: #020617; border-width: 2px; border-color: #38bdf8; padding: 10px; margin-top: 14px; }
@@ -609,7 +609,7 @@ fn main() {
                             // Update document height, clamp scroll, and advance the
                             // smooth-scroll animation.
                             document_height = layout_root.total_document_height();
-                            let viewport_h = state.size.height as f32;
+                            let viewport_h = (state.size.height as f32 - ui::TOTAL_CHROME_HEIGHT).max(100.0);
                             let max_scroll = (document_height - viewport_h).max(0.0);
                             {
                                 let tab = tab_manager.active_tab_mut();
@@ -618,7 +618,18 @@ fn main() {
                                     state.window.request_redraw();
                                 }
                             }
-                            let paint_commands = paint::build_display_list(&layout_root, &styles);
+                            let mut paint_commands = paint::build_display_list(&layout_root, &styles);
+
+                            // Native Browser Chrome (Fixed atop the viewport)
+                            let chrome_commands = ui::build_chrome_display_list(
+                                viewport_width,
+                                &tab_manager,
+                                &address_bar.url_text,
+                                is_bookmarked,
+                                blocked_trackers,
+                                &bookmark_manager,
+                            );
+                            paint_commands.extend(chrome_commands);
 
                             // Queue any un-cached images for asynchronous fetch
                             for cmd in &paint_commands {

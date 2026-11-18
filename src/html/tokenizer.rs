@@ -100,7 +100,8 @@ impl Tokenizer {
     fn flush_text(&mut self) {
         if !self.text_buffer.is_empty() {
             let text = std::mem::take(&mut self.text_buffer);
-            self.emitted.push(Token::Text(text));
+            let decoded = decode_html_entities(&text);
+            self.emitted.push(Token::Text(decoded));
         }
     }
 
@@ -495,5 +496,104 @@ impl Tokenizer {
                     .push(Token::Comment(std::mem::take(&mut self.current_comment)));
             }
         }
+    }
+}
+
+/// Decodes standard HTML entities and numeric character references into UTF-8 characters.
+pub fn decode_html_entities(input: &str) -> String {
+    let mut out = String::with_capacity(input.len());
+    let mut chars = input.chars().peekable();
+
+    while let Some(ch) = chars.next() {
+        if ch == '&' {
+            let mut entity = String::new();
+            let mut found_semi = false;
+            while let Some(&next_ch) = chars.peek() {
+                if next_ch == ';' {
+                    chars.next();
+                    found_semi = true;
+                    break;
+                } else if next_ch.is_alphanumeric() || next_ch == '#' {
+                    entity.push(chars.next().unwrap());
+                    if entity.len() > 10 {
+                        break;
+                    }
+                } else {
+                    break;
+                }
+            }
+
+            if found_semi {
+                match entity.as_str() {
+                    "lt" => out.push('<'),
+                    "gt" => out.push('>'),
+                    "amp" => out.push('&'),
+                    "quot" => out.push('"'),
+                    "apos" => out.push('\''),
+                    "nbsp" => out.push(' '),
+                    "times" => out.push('×'),
+                    "bull" => out.push('•'),
+                    "larr" => out.push('←'),
+                    "rarr" => out.push('→'),
+                    "uarr" => out.push('↑'),
+                    "darr" => out.push('↓'),
+                    "#x21bb" => out.push('↻'),
+                    s if s.starts_with("#x") || s.starts_with("#X") => {
+                        if let Ok(code) = u32::from_str_radix(&s[2..], 16) {
+                            if let Some(c) = char::from_u32(code) {
+                                out.push(c);
+                            } else {
+                                out.push('&');
+                                out.push_str(&entity);
+                                out.push(';');
+                            }
+                        } else {
+                            out.push('&');
+                            out.push_str(&entity);
+                            out.push(';');
+                        }
+                    }
+                    s if s.starts_with('#') => {
+                        if let Ok(code) = s[1..].parse::<u32>() {
+                            if let Some(c) = char::from_u32(code) {
+                                out.push(c);
+                            } else {
+                                out.push('&');
+                                out.push_str(&entity);
+                                out.push(';');
+                            }
+                        } else {
+                            out.push('&');
+                            out.push_str(&entity);
+                            out.push(';');
+                        }
+                    }
+                    _ => {
+                        out.push('&');
+                        out.push_str(&entity);
+                        out.push(';');
+                    }
+                }
+            } else {
+                out.push('&');
+                out.push_str(&entity);
+            }
+        } else {
+            out.push(ch);
+        }
+    }
+    out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_decode_html_entities() {
+        assert_eq!(decode_html_entities("&lt;div&gt;Hello &amp; world&lt;/div&gt;"), "<div>Hello & world</div>");
+        assert_eq!(decode_html_entities("Close &times; now"), "Close × now");
+        assert_eq!(decode_html_entities("Bullet &bull; point"), "Bullet • point");
+        assert_eq!(decode_html_entities("Reload &#x21bb;"), "Reload ↻");
     }
 }

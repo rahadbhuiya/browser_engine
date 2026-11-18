@@ -89,15 +89,75 @@ together. Batch 5 (JS engine) is the biggest risk — attempt it only after stat
 page rendering works, to keep motivation and momentum.
 
 ## Status
-🎉 **All 8 Batches are 100% COMPLETED and Verified!**
-1. **Batch 1 (HTML Parser & DOM Arena)** — Completed
-2. **Batch 2 (CSS Parser & CSSOM Engine)** — Completed
-3. **Batch 3 (Style Resolution & Box Model Layout Engine)** — Completed
-4. **Batch 4 (GPU Paint Engine & `wgpu` Compositor)** — Completed
-5. **Batch 5 (Custom JS Lexer, Parser, Bytecode VM & DOM Bindings)** — Completed
-6. **Batch 6 (TLS 1.3 Networking, HTTP Client & URL Resolver)** — Completed
-7. **Batch 7 (Multi-process IPC Security, SOP & CSP Enforcer)** — Completed
-8. **Batch 8 (Browser Shell, Visual Multi-Tab Bar, Navigation History & Bookmarks)** — Completed
+**All 8 Foundation Batches are 100% COMPLETED and Verified!**
+1. **Batch 1 (HTML Parser & DOM Arena)** - Completed
+2. **Batch 2 (CSS Parser & CSSOM Engine)** - Completed
+3. **Batch 3 (Style Resolution & Box Model Layout Engine)** - Completed
+4. **Batch 4 (GPU Paint Engine & `wgpu` Compositor)** - Completed
+5. **Batch 5 (Custom JS Lexer, Parser, Bytecode VM & DOM Bindings)** - Completed
+6. **Batch 6 (TLS 1.3 Networking, HTTP Client & URL Resolver)** - Completed
+7. **Batch 7 (Multi-process IPC Security, SOP & CSP Enforcer)** - Completed
+8. **Batch 8 (Browser Shell, Visual Multi-Tab Bar, Navigation History & Bookmarks)** - Completed
+
+---
+
+## Production Milestones (Next Horizon)
+
+### Milestone #4 (v0.5.0) — Modern Web Fidelity & CSS Variable Engine
+*Target: 1-2 Days | Focus: Visual styling, colors, and horizontal menu flow on live production sites (GitHub, Google, Wikipedia)*
+
+- [ ] **Phase 4.1: HTML5 Standard User-Agent Default Stylesheet**
+  - Comprehensive default CSS rules for semantic elements (`nav`, `header`, `footer`, `section`, `article`, `aside`, `main`).
+  - Standard list formatting (`ul`, `ol`, `li`), paragraph margins, headings (`h1`-`h6`), tables, and forms.
+  - Form control defaults: buttons, inputs, checkboxes with native dark/light styling.
+- [ ] **Phase 4.2: CSS Custom Properties & Variables (`var(--name)`) Engine**
+  - Store `--*` custom properties in `ComputedStyle` per element.
+  - Resolve `var(--name, fallback)` during style cascade traversal.
+  - Automatically activates full dark-mode backgrounds, cards, and text colors on modern sites like GitHub and Wikipedia.
+- [ ] **Phase 4.3: Inline-Block & Horizontal Flow Engine**
+  - Support `display: inline-block` and inline element runs.
+  - Horizontal wrapping and flow: buttons, badges, navigation links sit side-by-side rather than collapsing vertically.
+- [ ] **Phase 4.4: Attribute Selectors & Advanced Pseudo-Classes**
+  - Attribute selectors: `[attr]`, `[attr="value"]`, `[attr*="value"]`, `[attr^="value"]`.
+  - Pseudo-classes: `:not()`, `:first-child`, `:last-child`, `:only-child`.
+  - Enables responsive themes (e.g. `[data-color-mode="dark"]`) on live sites.
+
+---
+
+### Milestone #5 (v0.6.0) — CSS Grid, Advanced Flexbox & Responsive Layout
+*Target: 3-5 Days | Focus: Multi-column grid tracks, responsive viewport scaling, and card layouts*
+
+- [ ] **Phase 5.1: CSS Grid Layout Engine**
+  - Grid container initialization (`display: grid`, `display: inline-grid`).
+  - 1D and 2D track sizing: `grid-template-columns`, `grid-template-rows`, `fr` flexible units, and `repeat(...)`.
+  - Grid item auto-placement and `gap` / `row-gap` / `column-gap` distribution.
+- [ ] **Phase 5.2: Flexbox Multi-Line & Advanced Alignment**
+  - `flex-wrap: wrap` and `flex-wrap: wrap-reverse` multi-line row breaking.
+  - `align-content`, `align-self`, and flex item shrink/grow factors (`flex-grow`, `flex-shrink`, `flex-basis`).
+- [ ] **Phase 5.3: Media Queries Engine**
+  - Parser for `@media (min-width: ...)` and `@media (max-width: ...)`.
+  - Evaluate viewport width at layout time to trigger desktop vs tablet vs mobile rules.
+  - System preference detection: `@media (prefers-color-scheme: dark)`.
+- [ ] **Phase 5.4: CSS Background Image & Gradient Pipeline**
+  - Parse `background-image: url(...)` and linear gradients.
+  - Asynchronously fetch background textures via `AsyncImagePipeline` and composite onto GPU render pass.
+
+---
+
+### Milestone #6 (v0.7.0) — Vector Graphics (SVG) & Extended Web DOM APIs
+*Target: 1 Week | Focus: Icons, brand logos, client-side menu toggles, and reactive DOM hydration*
+
+- [ ] **Phase 6.1: Pure Rust Lightweight SVG Rasterizer**
+  - Parse `<svg>`, `<path>`, `<circle>`, `<rect>`, `<g>`, `<polygon>`.
+  - Rasterize SVG vector paths to GPU textures or direct vertex paths (renders GitHub Octocat, search icons, UI arrows).
+- [ ] **Phase 6.2: Essential Web DOM API Bindings in JS Runtime**
+  - Query APIs: `document.querySelector`, `document.querySelectorAll`, `document.getElementById`.
+  - Class and Attribute APIs: `element.classList.add`, `element.classList.remove`, `element.classList.toggle`, `element.setAttribute`.
+  - Event Dispatching: `window.matchMedia` stub for responsive navigation script checks.
+- [ ] **Phase 6.3: Client-side Navigation Menu Hydration**
+  - Allows GitHub and Wikipedia scripts to safely initialize without throwing exceptions.
+  - Properly hides mobile menus and off-canvas drawers until toggled by user click.
+
 
 All **52 unit tests** are passing cleanly with 100% test suite success!
 

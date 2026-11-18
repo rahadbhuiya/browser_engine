@@ -192,4 +192,53 @@ mod tests {
         assert_eq!(img_box.dimensions.content.width, 240.0);
         assert_eq!(img_box.dimensions.content.height, 120.0);
     }
+
+    #[test]
+    fn test_non_rendered_tags_ignored_in_layout() {
+        use crate::dom::build_dom;
+        use crate::html::Tokenizer;
+
+        let html = r#"
+            <html>
+                <head>
+                    <title>Google Search</title>
+                    <style>body { background: #fff; } .hide { display: none; }</style>
+                    <script>console.log("analytics code");</script>
+                    <meta charset="utf-8">
+                </head>
+                <body>
+                    <style>div { color: red; }</style>
+                    <script>var x = 123;</script>
+                    <h1>Welcome</h1>
+                    <noscript>Please enable JS</noscript>
+                </body>
+            </html>
+        "#;
+        let dom = build_dom(Tokenizer::new(html).tokenize());
+        let styles = HashMap::new();
+
+        let layout_root =
+            build_layout_tree(&dom, &styles, dom.root).expect("Layout tree must build");
+
+        fn collect_all_text(lb: &LayoutBox, acc: &mut Vec<String>) {
+            if let Some(ref text) = lb.text_content {
+                acc.push(text.clone());
+            }
+            for child in &lb.children {
+                collect_all_text(child, acc);
+            }
+        }
+
+        let mut all_text = Vec::new();
+        collect_all_text(&layout_root, &mut all_text);
+
+        // Verify that NO CSS or JS or head content leaked into layout boxes
+        let combined = all_text.join(" ");
+        assert!(combined.contains("Welcome"));
+        assert!(!combined.contains("background: #fff"));
+        assert!(!combined.contains("analytics code"));
+        assert!(!combined.contains("var x = 123"));
+        assert!(!combined.contains("Google Search"));
+        assert!(!combined.contains("Please enable JS"));
+    }
 }

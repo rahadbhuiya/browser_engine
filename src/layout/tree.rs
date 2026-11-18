@@ -130,6 +130,17 @@ impl LayoutBox {
     }
 }
 
+pub fn is_non_rendered_tag(dom: &Dom, node_idx: usize) -> bool {
+    if let NodeType::Element(el) = &dom.nodes[node_idx].node_type {
+        matches!(
+            el.tag.to_ascii_lowercase().as_str(),
+            "head" | "style" | "script" | "title" | "meta" | "link" | "noscript" | "template"
+        )
+    } else {
+        false
+    }
+}
+
 fn is_block_level(dom: &Dom, node_idx: usize, styles: &HashMap<usize, ComputedStyle>) -> bool {
     if let Some(style) = styles.get(&node_idx) {
         if let Some(display) = style.get("display") {
@@ -142,7 +153,10 @@ fn is_block_level(dom: &Dom, node_idx: usize, styles: &HashMap<usize, ComputedSt
     }
 }
 
-fn is_display_none(node_idx: usize, styles: &HashMap<usize, ComputedStyle>) -> bool {
+fn is_display_none(dom: &Dom, node_idx: usize, styles: &HashMap<usize, ComputedStyle>) -> bool {
+    if is_non_rendered_tag(dom, node_idx) {
+        return true;
+    }
     styles
         .get(&node_idx)
         .and_then(|s| s.get("display"))
@@ -154,6 +168,9 @@ fn is_display_none(node_idx: usize, styles: &HashMap<usize, ComputedStyle>) -> b
 /// descendants' text) onto `buf`, used to flatten inline content into a
 /// single anonymous run.
 fn collect_inline_text(dom: &Dom, node_idx: usize, buf: &mut String) {
+    if is_non_rendered_tag(dom, node_idx) {
+        return;
+    }
     match &dom.nodes[node_idx].node_type {
         NodeType::Text(t) => buf.push_str(t),
         NodeType::Element(_) => {
@@ -177,7 +194,7 @@ pub fn build_layout_tree(
     if !is_container {
         return None;
     }
-    if is_display_none(node_idx, styles) {
+    if is_display_none(dom, node_idx, styles) {
         return None;
     }
 
@@ -207,7 +224,7 @@ pub fn build_layout_tree(
                 }
             }
             NodeType::Element(el) => {
-                if is_display_none(child_idx, styles) {
+                if is_display_none(dom, child_idx, styles) {
                     continue;
                 }
                 if is_block_level(dom, child_idx, styles) {

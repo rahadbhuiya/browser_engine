@@ -2,15 +2,19 @@
 
 pub mod address_bar;
 pub mod bookmarks;
+pub mod chrome;
 pub mod context_menu;
 pub mod devtools;
+pub mod internal_pages;
 pub mod navbar;
 pub mod tab;
 
 pub use address_bar::AddressBar;
 pub use bookmarks::{Bookmark, BookmarkManager};
+pub use chrome::{build_chrome_display_list, hit_test_chrome, ChromeClick, TOTAL_CHROME_HEIGHT};
 pub use context_menu::ContextMenu;
 pub use devtools::{DevTools, DevToolsTab};
+pub use internal_pages::render_internal_page;
 pub use navbar::{NavAction, NavBar, NavBarHistory};
 pub use tab::{Tab, TabManager};
 
@@ -210,6 +214,42 @@ mod tests {
         let net_html = dt.render_html(&dom, "https://example.com");
         assert!(net_html.contains("bundle.js"));
         assert!(net_html.contains("200 OK"));
+    }
+
+    #[test]
+    fn test_internal_pages_routing_and_content() {
+        let bm = BookmarkManager::new();
+        let history = NavBarHistory::default();
+
+        // New Tab
+        let (title, html) = render_internal_page("kestrel://newtab", &bm, &history).unwrap();
+        assert_eq!(title, "New Tab");
+        assert!(html.contains("KESTREL"));
+        assert!(html.contains("Search the web"));
+
+        // About
+        let (about_title, about_html) = render_internal_page("kestrel://about", &bm, &history).unwrap();
+        assert_eq!(about_title, "About Kestrel");
+        assert!(about_html.contains("Rahad Bhuiya"));
+        assert!(about_html.contains("Zero-Chromium"));
+
+        // Settings
+        let (settings_title, settings_html) = render_internal_page("kestrel://settings", &bm, &history).unwrap();
+        assert_eq!(settings_title, "Settings");
+        assert!(settings_html.contains("Privacy &amp; Security"));
+
+        // History
+        let (hist_title, hist_html) = render_internal_page("kestrel://history", &bm, &history).unwrap();
+        assert_eq!(hist_title, "Browsing History");
+        assert!(hist_html.contains("Browsing History"));
+
+        // Bookmarks
+        let (bm_title, bm_html) = render_internal_page("kestrel://bookmarks", &bm, &history).unwrap();
+        assert_eq!(bm_title, "Bookmarks");
+        assert!(bm_html.contains("Saved Bookmarks"));
+
+        // Non-internal scheme returns None
+        assert!(render_internal_page("https://google.com", &bm, &history).is_none());
     }
 }
 

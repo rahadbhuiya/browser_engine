@@ -180,7 +180,7 @@ impl PrivacyDashboard {
             r#"
             <div class="privacy-dashboard" style="background-color: #020617; border: 2px solid #10b981; border-radius: 8px; padding: 12px; margin-top: 10px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                    <span style="color: #10b981; font-weight: bold; font-size: 14px;">🛡️ PRIVACY SHIELD &amp; TRACKER INSPECTION DASHBOARD</span>
+                    <span style="color: #10b981; font-weight: bold; font-size: 14px;">PRIVACY SHIELD &amp; TRACKER INSPECTION DASHBOARD</span>
                     <span style="background-color: #064e3b; color: #34d399; font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: bold;">ZERO-TELEMETRY MODE</span>
                 </div>
                 <p style="color: #cbd5e1; font-size: 12px; margin: 2px 0;">Active Page: <span style="color: #38bdf8;">{}</span></p>

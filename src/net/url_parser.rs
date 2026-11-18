@@ -54,10 +54,14 @@ impl ParsedUrl {
 pub fn format_url_or_search_query(input: &str) -> String {
     let trimmed = input.trim();
     if trimmed.is_empty() {
-        return "about:blank".to_string();
+        return "kestrel://newtab".to_string();
     }
 
-    if trimmed.starts_with("http://") || trimmed.starts_with("https://") {
+    if trimmed.starts_with("http://")
+        || trimmed.starts_with("https://")
+        || trimmed.starts_with("kestrel://")
+        || trimmed.starts_with("about:")
+    {
         return trimmed.to_string();
     }
 
