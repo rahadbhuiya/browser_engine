@@ -3,7 +3,7 @@
 [![Crates.io](https://img.shields.io/crates/v/browser_engine.svg)](https://crates.io/crates/browser_engine)
 [![Documentation](https://docs.rs/browser_engine/badge.svg)](https://docs.rs/browser_engine)
 [![CI](https://github.com/rahadbhuiya/browser_engine/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/rahadbhuiya/browser_engine/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
 [![Language: Rust 2021](https://img.shields.io/badge/Rust-2021-orange.svg)](https://www.rust-lang.org/)
 [![Graphics: wgpu](https://img.shields.io/badge/Graphics-wgpu-purple.svg)](https://wgpu.rs/)
 [![Security: rustls](https://img.shields.io/badge/Security-rustls-green.svg)](https://github.com/rustls/rustls)
@@ -173,6 +173,16 @@ cargo run --release
 
 ---
 
-## License
+## License & Commercial Inquiries
 
-This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
+`browser_engine` is dual-licensed under open-source and commercial terms:
+
+### 1. Open Source (GNU AGPLv3)
+For open-source projects, academic research, and non-commercial exploration, this project is licensed under the **GNU Affero General Public License v3.0 or later (AGPL-3.0-or-later)**.
+Under this license, any web browser, embedded WebKit/Blink alternative, kiosk runtime, or server-side headless renderer incorporating, modifying, or linking `browser_engine` must make its complete source code available under compatible copyleft terms when distributed or deployed over a network. See [LICENSE](LICENSE) for the full text.
+
+### 2. Proprietary Commercial License
+For enterprises, embedded device OEMs, financial/defense organizations, and proprietary software vendors who wish to embed `browser_engine` into closed-source commercial applications, security-isolated web views, or proprietary hardware without AGPLv3 copyleft obligations:
+- Commercial licenses are available without copyleft requirements.
+- Includes custom rendering pipeline integration, GPU backend porting, and dedicated support.
+- For commercial licensing terms, proprietary SLA, and custom integration inquiries, contact: **`rahadbhuiya2021@gmail.com`**.

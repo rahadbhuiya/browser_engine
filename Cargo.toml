@@ -7,7 +7,7 @@ description = "A modular, GPU-accelerated, security-first web browser engine bui
 repository = "https://github.com/rahadbhuiya/browser_engine"
 documentation = "https://docs.rs/browser_engine"
 readme = "README.md"
-license = "MIT"
+license = "AGPL-3.0-or-later"
 keywords = ["browser", "browser-engine", "rendering-engine", "wgpu", "rust"]
 categories = ["web-programming", "rendering"]
 
