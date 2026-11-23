@@ -8,7 +8,10 @@
 // a browser that chokes on the first one it doesn't support is a security and
 // robustness problem, not just a missing-feature problem.
 
-use super::cssom::{Combinator, Declaration, PseudoClass, Rule, Selector, SimpleSelector, Stylesheet};
+use super::cssom::{
+    AttributeMatcher, AttributeSelector, Combinator, Declaration, PseudoClass, Rule, Selector,
+    SimpleSelector, Stylesheet,
+};
 use super::token::CssToken;
 
 pub struct CssParser {
@@ -214,7 +217,19 @@ impl CssParser {
                 | Some(CssToken::Delim('.'))
                 | Some(CssToken::Delim('*'))
                 | Some(CssToken::Colon)
+                | Some(CssToken::LeftBracket)
         )
+    }
+
+    fn parse_attr_value(&mut self) -> String {
+        match self.peek() {
+            Some(CssToken::Str(s)) | Some(CssToken::Ident(s)) => {
+                let res = s.clone();
+                self.pos += 1;
+                res
+            }
+            _ => String::new(),
+        }
     }
 
     fn parse_simple_selector(&mut self) -> Option<SimpleSelector> {
@@ -262,6 +277,81 @@ impl CssParser {
                         matched_anything = true;
                     } else {
                         // malformed ":" with nothing after — recover by stopping
+                        break;
+                    }
+                }
+                Some(CssToken::LeftBracket) => {
+                    self.pos += 1;
+                    self.skip_whitespace();
+                    if let Some(CssToken::Ident(attr_name)) = self.peek() {
+                        let attr_name = attr_name.clone();
+                        self.pos += 1;
+                        self.skip_whitespace();
+                        let matcher = match self.peek() {
+                            Some(CssToken::RightBracket) => AttributeMatcher::Exists,
+                            Some(CssToken::Delim('=')) => {
+                                self.pos += 1;
+                                self.skip_whitespace();
+                                let val = self.parse_attr_value();
+                                AttributeMatcher::Exact(val)
+                            }
+                            Some(CssToken::Delim('~')) => {
+                                self.pos += 1;
+                                if matches!(self.peek(), Some(CssToken::Delim('='))) {
+                                    self.pos += 1;
+                                }
+                                self.skip_whitespace();
+                                let val = self.parse_attr_value();
+                                AttributeMatcher::Includes(val)
+                            }
+                            Some(CssToken::Delim('|')) => {
+                                self.pos += 1;
+                                if matches!(self.peek(), Some(CssToken::Delim('='))) {
+                                    self.pos += 1;
+                                }
+                                self.skip_whitespace();
+                                let val = self.parse_attr_value();
+                                AttributeMatcher::DashMatch(val)
+                            }
+                            Some(CssToken::Delim('^')) => {
+                                self.pos += 1;
+                                if matches!(self.peek(), Some(CssToken::Delim('='))) {
+                                    self.pos += 1;
+                                }
+                                self.skip_whitespace();
+                                let val = self.parse_attr_value();
+                                AttributeMatcher::Prefix(val)
+                            }
+                            Some(CssToken::Delim('$')) => {
+                                self.pos += 1;
+                                if matches!(self.peek(), Some(CssToken::Delim('='))) {
+                                    self.pos += 1;
+                                }
+                                self.skip_whitespace();
+                                let val = self.parse_attr_value();
+                                AttributeMatcher::Suffix(val)
+                            }
+                            Some(CssToken::Delim('*')) => {
+                                self.pos += 1;
+                                if matches!(self.peek(), Some(CssToken::Delim('='))) {
+                                    self.pos += 1;
+                                }
+                                self.skip_whitespace();
+                                let val = self.parse_attr_value();
+                                AttributeMatcher::Substring(val)
+                            }
+                            _ => AttributeMatcher::Exists,
+                        };
+                        self.skip_whitespace();
+                        if matches!(self.peek(), Some(CssToken::RightBracket)) {
+                            self.pos += 1;
+                        }
+                        simple.attributes.push(AttributeSelector {
+                            name: attr_name,
+                            matcher,
+                        });
+                        matched_anything = true;
+                    } else {
                         break;
                     }
                 }
@@ -472,5 +562,24 @@ mod parser_tests {
         );
         // Specificity: tag (1) + 2 pseudo-classes (2) = (0, 2, 1)
         assert_eq!(sel2.specificity(), (0, 2, 1));
+    }
+
+    #[test]
+    fn test_parse_attribute_selectors() {
+        let sel = parse_selector(r#"input[type="text"][disabled]"#).unwrap();
+        assert_eq!(sel.steps[0].1.tag.as_deref(), Some("input"));
+        assert_eq!(sel.steps[0].1.attributes.len(), 2);
+        assert_eq!(sel.steps[0].1.attributes[0].name, "type");
+        assert_eq!(
+            sel.steps[0].1.attributes[0].matcher,
+            AttributeMatcher::Exact("text".to_string())
+        );
+        assert_eq!(sel.steps[0].1.attributes[1].name, "disabled");
+        assert_eq!(
+            sel.steps[0].1.attributes[1].matcher,
+            AttributeMatcher::Exists
+        );
+        // Specificity: tag (1) + 2 attributes (2) = (0, 2, 1)
+        assert_eq!(sel.specificity(), (0, 2, 1));
     }
 }

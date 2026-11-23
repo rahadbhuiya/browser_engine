@@ -77,9 +77,11 @@ The engine does not rely on Chromium, WebKit, or Gecko internals. It implements 
 - **Resilient Parsing:** Resilient tokenizer handling malformed HTML tags, unclosed attributes, comments, and doctypes without panicking.
 - **Arena Tree Structure:** The DOM is represented as an index-linked memory arena (`Vec<DomNode>`), eliminating raw cyclic reference-counting overhead and guaranteeing cache-locality.
 
-### 2. CSSOM & Specificity Cascade
-- **Selector Matching:** Right-to-left evaluation supporting type, class, ID selectors, and combinators (`>`, `+`, `~`, descendant).
+### 2. CSSOM, Specificity Cascade & Variables
+- **Selector Matching:** Right-to-left evaluation supporting type, class, ID selectors, attribute selectors (`[attr]`, `[attr="value"]`, `[attr*="value"]`, `[attr^="value"]`, `[attr$="value"]`, `[attr~="value"]`, `[attr|="value"]`), and combinators (`>`, `+`, `~`, descendant).
 - **Cascade Specificity:** Strict specificity tuple tracking `(id_count, class_count, type_count)` honoring `!important` declarations, stylesheet origin, and source order.
+- **CSS Custom Properties & Variables:** Full support for `--*` custom properties with DOM tree inheritance and recursive `var(--name, fallback)` resolution.
+- **HTML5 User-Agent Default Stylesheet:** Built-in standard styling for semantic elements, tables, lists, buttons, headings, and modern form controls.
 
 ### 3. Box Model Layout Engine
 - **CSS Box Model:** Computes exact coordinates for content, padding, border, and margin geometry.
@@ -156,7 +158,7 @@ sudo apt-get install -y libx11-dev libxi-dev libxrandr-dev libxcursor-dev libxkb
 git clone https://github.com/rahadbhuiya/browser_engine.git
 cd browser_engine
 
-# Run the test suite (45 unit tests covering DOM, CSSOM, Layout, JS VM, and Security)
+# Run the test suite (124 unit tests covering DOM, CSSOM, Layout, JS VM, and Security)
 cargo test
 
 # Build and run the browser in release mode

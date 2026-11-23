@@ -69,7 +69,9 @@ pub fn fetch_and_render_page(url_str: &str) -> (dom::Dom, Vec<paint::PaintComman
         css_source.push_str("body { color: #333; }");
     }
 
-    let stylesheet = css::CssParser::new(css::CssTokenizer::new(&css_source).tokenize()).parse();
+    let mut stylesheet = css::default_user_agent_stylesheet();
+    let author_stylesheet = css::CssParser::new(css::CssTokenizer::new(&css_source).tokenize()).parse();
+    stylesheet.rules.extend(author_stylesheet.rules);
     let styles = style::compute_styles(&dom_tree, &stylesheet);
 
     let display_list = if let Some(mut layout_root) =
@@ -584,7 +586,9 @@ fn main() {
                         "#;
 
                         let dom_tree = build_dom(Tokenizer::new(&html_doc).tokenize());
-                        let mut stylesheet = CssParser::new(CssTokenizer::new(css_doc).tokenize()).parse();
+                        let mut stylesheet = css::default_user_agent_stylesheet();
+                        let author_sheet = CssParser::new(CssTokenizer::new(css_doc).tokenize()).parse();
+                        stylesheet.rules.extend(author_sheet.rules);
 
                         // Merge embedded <style> blocks from the loaded page into stylesheet cascade
                         for node in &dom_tree.nodes {
@@ -873,7 +877,7 @@ mod css_tests {
 
     #[test]
     fn malformed_selector_drops_whole_rule_cleanly() {
-        let sheet = parse("div [unsupported] { color: blue; } p { margin: 0; }");
+        let sheet = parse("div > > p { color: blue; } p { margin: 0; }");
         assert_eq!(sheet.rules.len(), 1);
         assert_eq!(sheet.rules[0].declarations[0].property, "margin");
     }
@@ -1051,5 +1055,74 @@ mod batch3_tests {
                 layout_tree(&mut root, 800.0, &styles);
             }
         }
+    }
+
+    #[test]
+    fn test_attribute_selector_matching() {
+        let (dom, sheet) = build(
+            r#"<div><input type="text" disabled><a href="https://example.org/test" target="_blank">link</a></div>"#,
+            r#"input[type="text"][disabled] { background-color: #eee; } a[href*="example"][target] { color: #2563eb; }"#,
+        );
+        let styles = compute_styles(&dom, &sheet);
+        let div_idx = dom.nodes[dom.root].children[0];
+        let input_idx = dom.nodes[div_idx].children[0];
+        let a_idx = dom.nodes[div_idx].children[1];
+
+        assert_eq!(
+            styles.get(&input_idx).and_then(|s| s.get("background-color")),
+            Some(&"#eee".to_string())
+        );
+        assert_eq!(
+            styles.get(&a_idx).and_then(|s| s.get("color")),
+            Some(&"#2563eb".to_string())
+        );
+    }
+
+    #[test]
+    fn test_css_variables_resolution_and_inheritance() {
+        let (dom, sheet) = build(
+            r#"<div class="box"><p class="text">content</p></div>"#,
+            r#".box { --accent: #38bdf8; } .text { color: var(--accent); }"#,
+        );
+        let styles = compute_styles(&dom, &sheet);
+        let div_idx = dom.nodes[dom.root].children[0];
+        let p_idx = dom.nodes[div_idx].children[0];
+
+        assert_eq!(styles.get(&div_idx).and_then(|s| s.get("--accent")), Some(&"#38bdf8".to_string()));
+        assert_eq!(styles.get(&p_idx).and_then(|s| s.get("color")), Some(&"#38bdf8".to_string()));
+    }
+
+    #[test]
+    fn test_css_variables_fallback() {
+        let (dom, sheet) = build(
+            r#"<div><p>content</p></div>"#,
+            r#"p { color: var(--undefined-color, #10b981); }"#,
+        );
+        let styles = compute_styles(&dom, &sheet);
+        let div_idx = dom.nodes[dom.root].children[0];
+        let p_idx = dom.nodes[div_idx].children[0];
+
+        assert_eq!(styles.get(&p_idx).and_then(|s| s.get("color")), Some(&"#10b981".to_string()));
+    }
+
+    #[test]
+    fn test_user_agent_stylesheet_defaults_and_override() {
+        use super::style::compute_styles_with_ua;
+        let (dom, sheet) = build(
+            r#"<div><h1>Heading</h1><p>Paragraph</p></div>"#,
+            r#"h1 { color: #dc2626; }"#,
+        );
+        let styles = compute_styles_with_ua(&dom, &sheet);
+        let div_idx = dom.nodes[dom.root].children[0];
+        let h1_idx = dom.nodes[div_idx].children[0];
+        let p_idx = dom.nodes[div_idx].children[1];
+
+        // h1 has custom color from author sheet
+        assert_eq!(styles.get(&h1_idx).and_then(|s| s.get("color")), Some(&"#dc2626".to_string()));
+        // h1 retains user-agent font-weight: bold and font-size: 28px
+        assert_eq!(styles.get(&h1_idx).and_then(|s| s.get("font-weight")), Some(&"bold".to_string()));
+        assert_eq!(styles.get(&h1_idx).and_then(|s| s.get("font-size")), Some(&"28px".to_string()));
+        // p gets user agent default block display
+        assert_eq!(styles.get(&p_idx).and_then(|s| s.get("display")), Some(&"block".to_string()));
     }
 }

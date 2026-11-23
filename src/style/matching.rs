@@ -90,9 +90,43 @@ fn matches_simple(dom: &Dom, node_idx: usize, simple: &SimpleSelector) -> bool {
             return false;
         }
     }
+    for attr_sel in &simple.attributes {
+        if !matches_attribute(element, attr_sel) {
+            return false;
+        }
+    }
     // universal selector or bare tag/id/class combination: if we got here,
     // every constraint present on `simple` was satisfied
     true
+}
+
+fn matches_attribute(
+    element: &crate::dom::ElementData,
+    attr_sel: &crate::css::cssom::AttributeSelector,
+) -> bool {
+    let actual_val = match element.get_attribute(&attr_sel.name) {
+        Some(v) => v,
+        None => return false,
+    };
+    match &attr_sel.matcher {
+        crate::css::cssom::AttributeMatcher::Exists => true,
+        crate::css::cssom::AttributeMatcher::Exact(expected) => actual_val == expected,
+        crate::css::cssom::AttributeMatcher::Includes(expected) => {
+            actual_val.split_whitespace().any(|word| word == expected)
+        }
+        crate::css::cssom::AttributeMatcher::DashMatch(expected) => {
+            actual_val == expected || actual_val.starts_with(&format!("{}-", expected))
+        }
+        crate::css::cssom::AttributeMatcher::Prefix(expected) => {
+            !expected.is_empty() && actual_val.starts_with(expected)
+        }
+        crate::css::cssom::AttributeMatcher::Suffix(expected) => {
+            !expected.is_empty() && actual_val.ends_with(expected)
+        }
+        crate::css::cssom::AttributeMatcher::Substring(expected) => {
+            !expected.is_empty() && actual_val.contains(expected)
+        }
+    }
 }
 
 fn matches_pseudo(

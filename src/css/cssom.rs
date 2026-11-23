@@ -85,6 +85,23 @@ impl PseudoClass {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum AttributeMatcher {
+    Exists,                    // [attr]
+    Exact(String),             // [attr="value"]
+    Includes(String),          // [attr~="value"]
+    DashMatch(String),         // [attr|="value"]
+    Prefix(String),            // [attr^="value"]
+    Suffix(String),            // [attr$="value"]
+    Substring(String),         // [attr*="value"]
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct AttributeSelector {
+    pub name: String,
+    pub matcher: AttributeMatcher,
+}
+
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct SimpleSelector {
     pub universal: bool,
@@ -92,6 +109,7 @@ pub struct SimpleSelector {
     pub id: Option<String>,
     pub classes: Vec<String>,
     pub pseudo_classes: Vec<PseudoClass>,
+    pub attributes: Vec<AttributeSelector>,
 }
 
 /// (id_count, class_count, type_count) — CSS specificity, per
@@ -105,7 +123,7 @@ impl Selector {
             if simple.id.is_some() {
                 spec.0 += 1;
             }
-            spec.1 += (simple.classes.len() + simple.pseudo_classes.len()) as u32;
+            spec.1 += (simple.classes.len() + simple.pseudo_classes.len() + simple.attributes.len()) as u32;
             if simple.tag.is_some() {
                 spec.2 += 1;
             }
