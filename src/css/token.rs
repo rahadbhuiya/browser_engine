@@ -1,7 +1,4 @@
-// Batch 2 — CSS token types
-// Loosely follows the token categories from the CSS Syntax Module Level 3 spec:
-// https://www.w3.org/TR/css-syntax-3/#tokenization
-// (simplified: we don't yet handle unicode-range, url(), or escaped characters)
+//! CSS token definitions per CSS Syntax Module Level 3.
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum CssToken {

@@ -46,7 +46,9 @@ impl CspPolicy {
                 return true;
             }
             if src == "'self'" {
-                if (source_url.starts_with("http://") || source_url.starts_with("https://")) && !source_url.contains("untrusted") {
+                if (source_url.starts_with("http://") || source_url.starts_with("https://"))
+                    && !source_url.contains("untrusted")
+                {
                     return true;
                 }
             } else if source_url.contains(src) {

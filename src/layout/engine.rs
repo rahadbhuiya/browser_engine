@@ -1,8 +1,4 @@
-// Batch 3 & Production Pillar 1 — Layout geometry pass
-//
-// Implements modern CSS layout: Block formatting context, Flexbox (row,
-// column, justify-content, align-items), margin: auto horizontal centering,
-// and real line-wrapping text flow.
+//! Layout geometry pass: Block formatting, CSS Grid, Flexbox, and text flow.
 
 use std::collections::HashMap;
 
@@ -11,7 +7,6 @@ use crate::style::ComputedStyle;
 use super::box_model::Dimensions;
 use super::tree::{BoxType, LayoutBox};
 
-/// Rough text metrics stand-in until real font shaping exists.
 pub const AVG_CHAR_WIDTH_PX: f32 = 8.0;
 pub const LINE_HEIGHT_PX: f32 = 18.0;
 
@@ -38,7 +33,9 @@ fn layout_box(
     styles: &HashMap<usize, ComputedStyle>,
 ) {
     match layout_box_ref.box_type {
-        BoxType::Block(node_idx) => layout_block(layout_box_ref, containing_block, styles, node_idx),
+        BoxType::Block(node_idx) => {
+            layout_block(layout_box_ref, containing_block, styles, node_idx)
+        }
         BoxType::Anonymous => layout_anonymous_text(layout_box_ref, containing_block, None),
     }
 }
@@ -279,8 +276,11 @@ fn layout_block(
         .and_then(|s| s.get("display"))
         .map(|d| d.trim().to_ascii_lowercase());
     let is_flex = display.as_deref() == Some("flex") || display.as_deref() == Some("inline-flex");
+    let is_grid = display.as_deref() == Some("grid") || display.as_deref() == Some("inline-grid");
 
-    let children_height = if is_flex {
+    let children_height = if is_grid {
+        layout_grid_children(lb, style, styles)
+    } else if is_flex {
         layout_flex_children(lb, style, styles)
     } else {
         layout_block_children(lb, style, styles)
@@ -331,6 +331,216 @@ fn layout_block_children(
     cursor.content.height
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum GridTrack {
+    Px(f32),
+    Percent(f32),
+    Fr(f32),
+    Auto,
+}
+
+fn expand_repeat_tracks(input: &str) -> String {
+    let mut result = String::new();
+    let mut remaining = input;
+    while let Some(start) = remaining.find("repeat(") {
+        result.push_str(&remaining[..start]);
+        let after = &remaining[start + 7..];
+        if let Some(end) = after.find(')') {
+            let inner = &after[..end];
+            if let Some((count_str, track_str)) = inner.split_once(',') {
+                if let Ok(count) = count_str.trim().parse::<usize>() {
+                    let track = track_str.trim();
+                    for i in 0..count {
+                        if i > 0 {
+                            result.push(' ');
+                        }
+                        result.push_str(track);
+                    }
+                } else {
+                    result.push_str(inner);
+                }
+            }
+            remaining = &after[end + 1..];
+        } else {
+            result.push_str("repeat(");
+            remaining = after;
+        }
+    }
+    result.push_str(remaining);
+    result
+}
+
+fn parse_grid_track_list(value: &str, _containing: f32) -> Vec<GridTrack> {
+    let expanded = expand_repeat_tracks(value);
+    let mut tracks = Vec::new();
+    for token in expanded.split_whitespace() {
+        let t = token.trim();
+        if t.is_empty() {
+            continue;
+        }
+        if let Some(stripped) = t.strip_suffix("fr") {
+            let fr = stripped.trim().parse::<f32>().unwrap_or(1.0).max(0.0);
+            tracks.push(GridTrack::Fr(fr));
+        } else if let Some(stripped) = t.strip_suffix("px") {
+            let px = stripped.trim().parse::<f32>().unwrap_or(0.0).max(0.0);
+            tracks.push(GridTrack::Px(px));
+        } else if let Some(stripped) = t.strip_suffix('%') {
+            let pct = stripped.trim().parse::<f32>().unwrap_or(0.0).max(0.0);
+            tracks.push(GridTrack::Percent(pct));
+        } else if t.eq_ignore_ascii_case("auto") {
+            tracks.push(GridTrack::Auto);
+        } else if let Ok(val) = t.parse::<f32>() {
+            tracks.push(GridTrack::Px(val));
+        }
+    }
+    tracks
+}
+
+fn parse_gaps(style: Option<&ComputedStyle>, containing: f32) -> (f32, f32) {
+    let mut row_gap = 0.0;
+    let mut col_gap = 0.0;
+    if let Some(style) = style {
+        if let Some(gap) = style.get("gap") {
+            let parts: Vec<&str> = gap.split_whitespace().collect();
+            if parts.len() == 1 {
+                let v = parse_length(parts[0], containing);
+                row_gap = v;
+                col_gap = v;
+            } else if parts.len() >= 2 {
+                row_gap = parse_length(parts[0], containing);
+                col_gap = parse_length(parts[1], containing);
+            }
+        }
+        if let Some(rg) = style.get("row-gap") {
+            row_gap = parse_length(rg, containing);
+        }
+        if let Some(cg) = style.get("column-gap") {
+            col_gap = parse_length(cg, containing);
+        }
+    }
+    (row_gap, col_gap)
+}
+
+fn layout_grid_children(
+    lb: &mut LayoutBox,
+    style: Option<&ComputedStyle>,
+    styles: &HashMap<usize, ComputedStyle>,
+) -> f32 {
+    if lb.children.is_empty() {
+        return 0.0;
+    }
+
+    let container_width = lb.dimensions.content.width;
+    let (row_gap, col_gap) = parse_gaps(style, container_width);
+
+    let col_tracks_spec = style
+        .and_then(|s| s.get("grid-template-columns"))
+        .map(|s| parse_grid_track_list(s, container_width))
+        .unwrap_or_default();
+
+    let col_tracks = if col_tracks_spec.is_empty() {
+        vec![GridTrack::Fr(1.0)]
+    } else {
+        col_tracks_spec
+    };
+
+    let num_cols = col_tracks.len().max(1);
+    let total_col_gaps = if num_cols > 1 {
+        (num_cols - 1) as f32 * col_gap
+    } else {
+        0.0
+    };
+
+    let mut fixed_w = 0.0;
+    let mut total_fr = 0.0;
+    for track in &col_tracks {
+        match track {
+            GridTrack::Px(px) => fixed_w += px,
+            GridTrack::Percent(pct) => fixed_w += pct / 100.0 * container_width,
+            GridTrack::Fr(fr) => total_fr += fr,
+            GridTrack::Auto => fixed_w += 100.0f32.min(container_width / num_cols as f32),
+        }
+    }
+
+    let remaining_w = (container_width - total_col_gaps - fixed_w).max(0.0);
+    let fr_unit_w = if total_fr > 0.0 {
+        remaining_w / total_fr
+    } else {
+        0.0
+    };
+
+    let col_widths: Vec<f32> = col_tracks
+        .iter()
+        .map(|track| match track {
+            GridTrack::Px(px) => *px,
+            GridTrack::Percent(pct) => pct / 100.0 * container_width,
+            GridTrack::Fr(fr) => fr * fr_unit_w,
+            GridTrack::Auto => 100.0f32.min(container_width / num_cols as f32),
+        })
+        .collect();
+
+    let num_children = lb.children.len();
+    let num_rows = (num_children + num_cols - 1) / num_cols;
+    let mut row_heights = vec![0.0f32; num_rows];
+
+    for (idx, child) in lb.children.iter_mut().enumerate() {
+        let col = idx % num_cols;
+        let row = idx / num_cols;
+
+        let col_w = col_widths[col];
+        let probe = Dimensions {
+            content: super::box_model::Rect {
+                x: 0.0,
+                y: 0.0,
+                width: col_w,
+                height: 0.0,
+            },
+            ..Default::default()
+        };
+        layout_box(child, probe, styles);
+        let h = child.dimensions.margin_box().height;
+        if h > row_heights[row] {
+            row_heights[row] = h;
+        }
+    }
+
+    for (idx, child) in lb.children.iter_mut().enumerate() {
+        let col = idx % num_cols;
+        let row = idx / num_cols;
+
+        let mut cell_x = lb.dimensions.content.x;
+        for c in 0..col {
+            cell_x += col_widths[c] + col_gap;
+        }
+
+        let mut cell_y = lb.dimensions.content.y;
+        for r in 0..row {
+            cell_y += row_heights[r] + row_gap;
+        }
+
+        child.dimensions.content.x = cell_x + child.dimensions.margin.left;
+        child.dimensions.content.y = cell_y + child.dimensions.margin.top;
+    }
+
+    let total_row_gaps = if num_rows > 1 {
+        (num_rows - 1) as f32 * row_gap
+    } else {
+        0.0
+    };
+    row_heights.iter().sum::<f32>() + total_row_gaps
+}
+
+fn child_prop(
+    child: &LayoutBox,
+    styles: &HashMap<usize, ComputedStyle>,
+    prop: &str,
+) -> Option<String> {
+    match child.box_type {
+        BoxType::Block(idx) => styles.get(&idx).and_then(|s| s.get(prop)).cloned(),
+        BoxType::Anonymous => None,
+    }
+}
+
 fn layout_flex_children(
     lb: &mut LayoutBox,
     style: Option<&ComputedStyle>,
@@ -342,6 +552,12 @@ fn layout_flex_children(
         .unwrap_or_else(|| "row".to_string());
     let is_row = flex_direction != "column";
 
+    let flex_wrap = style
+        .and_then(|s| s.get("flex-wrap"))
+        .map(|w| w.trim().to_ascii_lowercase())
+        .unwrap_or_else(|| "nowrap".to_string());
+    let is_wrap = flex_wrap == "wrap" || flex_wrap == "wrap-reverse";
+
     let justify_content = style
         .and_then(|s| s.get("justify-content"))
         .map(|d| d.trim().to_ascii_lowercase())
@@ -352,11 +568,12 @@ fn layout_flex_children(
         .map(|d| d.trim().to_ascii_lowercase())
         .unwrap_or_else(|| "stretch".to_string());
 
+    let (row_gap, col_gap) = parse_gaps(style, lb.dimensions.content.width);
+
     if lb.children.is_empty() {
         return 0.0;
     }
 
-    // First layout pass to measure children natural sizes
     let probe_cursor = Dimensions {
         content: super::box_model::Rect {
             x: lb.dimensions.content.x,
@@ -372,57 +589,146 @@ fn layout_flex_children(
     }
 
     if is_row {
-        let total_child_width: f32 = lb.children.iter().map(|c| c.dimensions.margin_box().width).sum();
-        let free_space = (lb.dimensions.content.width - total_child_width).max(0.0);
+        let mut lines: Vec<Vec<usize>> = Vec::new();
+        let mut current_line = Vec::new();
+        let mut current_w = 0.0;
 
-        let (start_x, gap) = match justify_content.as_str() {
-            "center" => (free_space / 2.0, 0.0),
-            "flex-end" => (free_space, 0.0),
-            "space-between" => {
-                if lb.children.len() > 1 {
-                    (0.0, free_space / (lb.children.len() - 1) as f32)
-                } else {
-                    (0.0, 0.0)
-                }
-            }
-            "space-around" => {
-                let space = free_space / lb.children.len() as f32;
-                (space / 2.0, space)
-            }
-            _ => (0.0, 0.0), // "flex-start" default
-        };
-
-        let mut max_height: f32 = 0.0;
-        for child in &lb.children {
-            max_height = max_height.max(child.dimensions.margin_box().height);
-        }
-
-        let mut current_x = lb.dimensions.content.x + start_x;
-        for child in &mut lb.children {
-            child.dimensions.content.x = current_x + child.dimensions.margin.left;
-
-            // Cross-axis alignment (align-items)
-            let child_mb_height = child.dimensions.margin_box().height;
-            let align_y_offset = match align_items.as_str() {
-                "center" => (max_height - child_mb_height) / 2.0,
-                "flex-end" => max_height - child_mb_height,
-                _ => 0.0, // "flex-start", "stretch"
+        for (i, child) in lb.children.iter().enumerate() {
+            let child_w = child.dimensions.margin_box().width;
+            let needed = if current_line.is_empty() {
+                child_w
+            } else {
+                current_w + col_gap + child_w
             };
 
-            child.dimensions.content.y = lb.dimensions.content.y
-                + align_y_offset
-                + child.dimensions.margin.top;
-
-            current_x += child.dimensions.margin_box().width + gap;
+            if is_wrap && !current_line.is_empty() && needed > lb.dimensions.content.width {
+                lines.push(std::mem::take(&mut current_line));
+                current_line.push(i);
+                current_w = child_w;
+            } else {
+                current_line.push(i);
+                current_w = needed;
+            }
+        }
+        if !current_line.is_empty() {
+            lines.push(current_line);
         }
 
-        max_height
+        if flex_wrap == "wrap-reverse" {
+            lines.reverse();
+        }
+
+        let container_w = lb.dimensions.content.width;
+        let mut current_y = lb.dimensions.content.y;
+        let mut total_height = 0.0;
+
+        for (line_idx, line_indices) in lines.iter().enumerate() {
+            if line_idx > 0 {
+                current_y += row_gap;
+            }
+
+            let line_items_w: f32 = line_indices
+                .iter()
+                .map(|&idx| lb.children[idx].dimensions.margin_box().width)
+                .sum();
+            let line_gaps = if line_indices.len() > 1 {
+                (line_indices.len() - 1) as f32 * col_gap
+            } else {
+                0.0
+            };
+            let mut free_space = (container_w - line_items_w - line_gaps).max(0.0);
+
+            let mut total_grow = 0.0f32;
+            for &idx in line_indices {
+                let grow = child_prop(&lb.children[idx], styles, "flex-grow")
+                    .and_then(|g| g.trim().parse::<f32>().ok())
+                    .unwrap_or(0.0)
+                    .max(0.0);
+                total_grow += grow;
+            }
+
+            if total_grow > 0.0 && free_space > 0.0 {
+                for &idx in line_indices {
+                    let grow = child_prop(&lb.children[idx], styles, "flex-grow")
+                        .and_then(|g| g.trim().parse::<f32>().ok())
+                        .unwrap_or(0.0)
+                        .max(0.0);
+                    if grow > 0.0 {
+                        let extra = free_space * (grow / total_grow);
+                        lb.children[idx].dimensions.content.width += extra;
+                    }
+                }
+                free_space = 0.0;
+            }
+
+            let (start_x, extra_gap) = match justify_content.as_str() {
+                "center" => (free_space / 2.0, 0.0),
+                "flex-end" => (free_space, 0.0),
+                "space-between" => {
+                    if line_indices.len() > 1 {
+                        (0.0, free_space / (line_indices.len() - 1) as f32)
+                    } else {
+                        (0.0, 0.0)
+                    }
+                }
+                "space-around" => {
+                    let sp = free_space / line_indices.len() as f32;
+                    (sp / 2.0, sp)
+                }
+                _ => (0.0, 0.0),
+            };
+
+            let mut max_line_h: f32 = 0.0;
+            for &idx in line_indices {
+                let h = lb.children[idx].dimensions.margin_box().height;
+                if h > max_line_h {
+                    max_line_h = h;
+                }
+            }
+
+            let mut current_x = lb.dimensions.content.x + start_x;
+            for &idx in line_indices {
+                let child = &mut lb.children[idx];
+                child.dimensions.content.x = current_x + child.dimensions.margin.left;
+
+                let child_h = child.dimensions.margin_box().height;
+                let align =
+                    child_prop(child, styles, "align-self").unwrap_or_else(|| align_items.clone());
+                let align_offset = match align.as_str() {
+                    "center" => (max_line_h - child_h) / 2.0,
+                    "flex-end" => max_line_h - child_h,
+                    _ => 0.0,
+                };
+
+                child.dimensions.content.y = current_y + align_offset + child.dimensions.margin.top;
+                current_x += child.dimensions.margin_box().width + col_gap + extra_gap;
+            }
+
+            current_y += max_line_h;
+            total_height = current_y - lb.dimensions.content.y;
+        }
+
+        total_height
     } else {
-        // flex-direction: column
         let mut cursor_y = lb.dimensions.content.y;
         for child in &mut lb.children {
+            let align =
+                child_prop(child, styles, "align-self").unwrap_or_else(|| align_items.clone());
+            let align_offset = match align.as_str() {
+                "center" => {
+                    (lb.dimensions.content.width - child.dimensions.margin_box().width) / 2.0
+                }
+                "flex-end" => lb.dimensions.content.width - child.dimensions.margin_box().width,
+                _ => 0.0,
+            };
+
+            child.dimensions.content.x =
+                lb.dimensions.content.x + align_offset + child.dimensions.margin.left;
             child.dimensions.content.y = cursor_y + child.dimensions.margin.top;
-            cursor_y += child.dimensions.margin_box().height;
+            cursor_y += child.dimensions.margin_box().height + row_gap;
+        }
+        if !lb.children.is_empty() {
+            cursor_y -= row_gap;
         }
         cursor_y - lb.dimensions.content.y
     }

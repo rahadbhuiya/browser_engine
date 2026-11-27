@@ -2,12 +2,10 @@ pub mod controls;
 pub mod pipeline;
 
 pub use controls::{MediaControlHit, MediaControls};
-pub use pipeline::{
-    MediaContainerFormat, MediaElementState, MediaType, PlaybackState, VideoFrame,
-};
+pub use pipeline::{MediaContainerFormat, MediaElementState, MediaType, PlaybackState, VideoFrame};
 
-use std::collections::HashMap;
 use crate::dom::{Dom, NodeType};
+use std::collections::HashMap;
 
 /// Central manager orchestrating all `<audio>` and `<video>` playback across loaded tabs.
 #[derive(Default)]
@@ -34,19 +32,18 @@ impl MediaManager {
                         MediaType::Video
                     };
 
-                    let src = elem
-                        .get_attribute("src")
-                        .unwrap_or("")
-                        .to_string();
+                    let src = elem.get_attribute("src").unwrap_or("").to_string();
 
-                    let controls = elem.has_attribute("controls") || !elem.has_attribute("nocontrols");
+                    let controls =
+                        elem.has_attribute("controls") || !elem.has_attribute("nocontrols");
                     let autoplay = elem.has_attribute("autoplay");
                     let loop_pb = elem.has_attribute("loop");
                     let muted = elem.has_attribute("muted");
 
-                    let state = self.elements.entry(idx).or_insert_with(|| {
-                        MediaElementState::new(idx, mtype, src.clone())
-                    });
+                    let state = self
+                        .elements
+                        .entry(idx)
+                        .or_insert_with(|| MediaElementState::new(idx, mtype, src.clone()));
 
                     state.controls = controls;
                     state.autoplay = autoplay;
@@ -88,22 +85,43 @@ impl MediaManager {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::html::Tokenizer;
     use crate::dom::build_dom;
+    use crate::html::Tokenizer;
     use crate::layout::Rect;
 
     #[test]
     fn test_media_container_format_detection() {
-        assert_eq!(MediaContainerFormat::from_url_or_src("https://example.com/audio.mp3"), MediaContainerFormat::Mp3);
-        assert_eq!(MediaContainerFormat::from_url_or_src("video.mp4"), MediaContainerFormat::Mp4);
-        assert_eq!(MediaContainerFormat::from_url_or_src("stream.webm"), MediaContainerFormat::WebM);
-        assert_eq!(MediaContainerFormat::from_url_or_src("sound.wav"), MediaContainerFormat::Wav);
-        assert_eq!(MediaContainerFormat::from_url_or_src("track.ogg"), MediaContainerFormat::Ogg);
+        assert_eq!(
+            MediaContainerFormat::from_url_or_src("https://example.com/audio.mp3"),
+            MediaContainerFormat::Mp3
+        );
+        assert_eq!(
+            MediaContainerFormat::from_url_or_src("video.mp4"),
+            MediaContainerFormat::Mp4
+        );
+        assert_eq!(
+            MediaContainerFormat::from_url_or_src("stream.webm"),
+            MediaContainerFormat::WebM
+        );
+        assert_eq!(
+            MediaContainerFormat::from_url_or_src("sound.wav"),
+            MediaContainerFormat::Wav
+        );
+        assert_eq!(
+            MediaContainerFormat::from_url_or_src("track.ogg"),
+            MediaContainerFormat::Ogg
+        );
 
         let wav_header = b"RIFF\x24\x00\x00\x00WAVEfmt ";
-        assert_eq!(MediaContainerFormat::from_magic_bytes(wav_header), MediaContainerFormat::Wav);
+        assert_eq!(
+            MediaContainerFormat::from_magic_bytes(wav_header),
+            MediaContainerFormat::Wav
+        );
         let ogg_header = b"OggS\x00\x02\x00\x00";
-        assert_eq!(MediaContainerFormat::from_magic_bytes(ogg_header), MediaContainerFormat::Ogg);
+        assert_eq!(
+            MediaContainerFormat::from_magic_bytes(ogg_header),
+            MediaContainerFormat::Ogg
+        );
     }
 
     #[test]
@@ -138,11 +156,20 @@ mod tests {
 
     #[test]
     fn test_media_controls_layout_and_hit_testing() {
-        let media_rect = Rect { x: 100.0, y: 100.0, width: 640.0, height: 360.0 };
+        let media_rect = Rect {
+            x: 100.0,
+            y: 100.0,
+            width: 640.0,
+            height: 360.0,
+        };
         let controls = MediaControls::compute_layout(media_rect, MediaType::Video);
 
         // Hit play button
-        let hit_play = controls.hit_test(media_rect, controls.play_pause_rect.x + 2.0, controls.play_pause_rect.y + 2.0);
+        let hit_play = controls.hit_test(
+            media_rect,
+            controls.play_pause_rect.x + 2.0,
+            controls.play_pause_rect.y + 2.0,
+        );
         assert_eq!(hit_play, Some(MediaControlHit::PlayPauseButton));
 
         // Hit seek bar at 50%
@@ -174,8 +201,12 @@ mod tests {
         let mut has_audio = false;
         let mut has_video = false;
         for (_, elem) in manager.elements.iter() {
-            if elem.media_type == MediaType::Audio { has_audio = true; }
-            if elem.media_type == MediaType::Video { has_video = true; }
+            if elem.media_type == MediaType::Audio {
+                has_audio = true;
+            }
+            if elem.media_type == MediaType::Video {
+                has_video = true;
+            }
         }
         assert!(has_audio);
         assert!(has_video);

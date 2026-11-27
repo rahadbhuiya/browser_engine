@@ -14,38 +14,23 @@ pub fn render_internal_page(
         || normalized == "kestrel://home"
         || normalized == "about:blank"
     {
-        return Some((
-            "New Tab".to_string(),
-            render_newtab_html(bookmark_mgr),
-        ));
+        return Some(("New Tab".to_string(), render_newtab_html(bookmark_mgr)));
     }
 
     if normalized == "kestrel://about" {
-        return Some((
-            "About Kestrel".to_string(),
-            render_about_html(),
-        ));
+        return Some(("About Kestrel".to_string(), render_about_html()));
     }
 
     if normalized == "kestrel://bookmarks" {
-        return Some((
-            "Bookmarks".to_string(),
-            render_bookmarks_html(bookmark_mgr),
-        ));
+        return Some(("Bookmarks".to_string(), render_bookmarks_html(bookmark_mgr)));
     }
 
     if normalized == "kestrel://history" {
-        return Some((
-            "Browsing History".to_string(),
-            render_history_html(history),
-        ));
+        return Some(("Browsing History".to_string(), render_history_html(history)));
     }
 
     if normalized == "kestrel://settings" {
-        return Some((
-            "Settings".to_string(),
-            render_settings_html(),
-        ));
+        return Some(("Settings".to_string(), render_settings_html()));
     }
 
     None
@@ -87,7 +72,7 @@ fn render_about_html() -> String {
                     About Kestrel Browser
                 </h1>
                 <p style="color: #94a3b8; font-size: 15px; margin-bottom: 24px;">
-                    Version 0.4.0 (Milestone #3) &bull; Built from scratch in pure Rust by Rahad Bhuiya
+                    Version 0.6.0 (Milestone #5) &bull; Built from scratch in pure Rust by Rahad Bhuiya
                 </p>
 
                 <div style="background-color: #111827; border-radius: 12px; padding: 24px; border: 1px solid #1f2937; margin-bottom: 20px;">
@@ -106,6 +91,8 @@ fn render_about_html() -> String {
                         <li><strong>v0.2.0:</strong> CSSOM Parser, Flexbox Layout &amp; GPU Paint Display List</li>
                         <li><strong>v0.3.0:</strong> TLS 1.3 Networking, Bytecode JS VM &amp; Multi-Process Sandbox</li>
                         <li><strong>v0.4.0:</strong> W3C DOM Event Bubbling, Interactive Forms &amp; Audio/Video Streaming</li>
+                        <li><strong>v0.5.0:</strong> User-Agent Stylesheet, CSS Variables &amp; Attribute Selectors</li>
+                        <li><strong>v0.6.0:</strong> CSS Grid Layout, Multi-line Flexbox &amp; Media Queries</li>
                     </ul>
                 </div>
 

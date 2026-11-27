@@ -1,8 +1,8 @@
-use crate::dom::{Dom, NodeType};
 use super::bytecode::{Compiler, Value};
 use super::lexer::JsLexer;
 use super::parser::JsParser;
 use super::vm::VM;
+use crate::dom::{Dom, NodeType};
 
 pub fn execute_js_on_dom(script: &str, dom: &mut Dom) {
     let tokens = JsLexer::new(script).tokenize();
@@ -56,7 +56,12 @@ pub fn execute_js_on_dom(script: &str, dom: &mut Dom) {
                 if let Some(idx) = dom_ref.get_element_by_id(&target_id) {
                     println!("JS Form: Submitting form #{}", target_id);
                     let mgr = crate::dom::FormManager::new();
-                    if let Ok(payload) = crate::dom::build_form_submission(dom_ref, idx, &mgr, "https://example.com/") {
+                    if let Ok(payload) = crate::dom::build_form_submission(
+                        dom_ref,
+                        idx,
+                        &mgr,
+                        "https://example.com/",
+                    ) {
                         return Value::String(payload.target_url);
                     }
                 }
@@ -98,7 +103,10 @@ pub fn execute_js_on_dom(script: &str, dom: &mut Dom) {
 
     vm.register_native_fn("setTimeout", move |_vm, args| {
         if args.len() >= 2 {
-            println!("JS Timer: Scheduled callback for {} ms", args[1].to_string());
+            println!(
+                "JS Timer: Scheduled callback for {} ms",
+                args[1].to_string()
+            );
         }
         Value::Number(1.0)
     });

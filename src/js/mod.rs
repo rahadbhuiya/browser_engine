@@ -78,7 +78,8 @@ mod tests {
 
     #[test]
     fn test_canvas_2d_api() {
-        let html = r#"<html><body><canvas id="myCanvas" width="200" height="100"></canvas></body></html>"#;
+        let html =
+            r#"<html><body><canvas id="myCanvas" width="200" height="100"></canvas></body></html>"#;
         let mut dom = build_dom(Tokenizer::new(html).tokenize());
 
         let script = r#"
@@ -126,4 +127,3 @@ mod tests {
         assert!(found);
     }
 }
-

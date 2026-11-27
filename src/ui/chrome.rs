@@ -1,7 +1,7 @@
-use crate::layout::box_model::Rect;
-use crate::paint::{Color, PaintCommand};
 use super::bookmarks::BookmarkManager;
 use super::tab::TabManager;
+use crate::layout::box_model::Rect;
+use crate::paint::{Color, PaintCommand};
 
 pub const TAB_BAR_HEIGHT: f32 = 34.0;
 pub const TOOLBAR_HEIGHT: f32 = 40.0;
@@ -41,7 +41,12 @@ pub fn build_chrome_display_list(
     // ==========================================
     // Tab strip background
     cmds.push(PaintCommand::DrawRect {
-        rect: Rect { x: 0.0, y: 0.0, width, height: TAB_BAR_HEIGHT },
+        rect: Rect {
+            x: 0.0,
+            y: 0.0,
+            width,
+            height: TAB_BAR_HEIGHT,
+        },
         color: Color::new(0.047, 0.063, 0.094, 1.0), // #0c1018
         border_radius: 0.0,
         is_fixed: true,
@@ -59,23 +64,42 @@ pub fn build_chrome_display_list(
         if is_active {
             // Active tab body (seamless with toolbar below)
             cmds.push(PaintCommand::DrawRect {
-                rect: Rect { x: tab_x, y: tab_y, width: tab_w, height: tab_h },
+                rect: Rect {
+                    x: tab_x,
+                    y: tab_y,
+                    width: tab_w,
+                    height: tab_h,
+                },
                 color: Color::new(0.098, 0.129, 0.188, 1.0), // #192130
                 border_radius: 6.0,
                 is_fixed: true,
             });
             // Top accent line
             cmds.push(PaintCommand::DrawRect {
-                rect: Rect { x: tab_x + 2.0, y: tab_y, width: tab_w - 4.0, height: 2.0 },
+                rect: Rect {
+                    x: tab_x + 2.0,
+                    y: tab_y,
+                    width: tab_w - 4.0,
+                    height: 2.0,
+                },
                 color: Color::new(0.22, 0.74, 0.97, 1.0), // #38bdf8
                 border_radius: 1.0,
                 is_fixed: true,
             });
             // Tab Title
-            let title = if tab.title.len() > 17 { format!("{}...", &tab.title[..14]) } else { tab.title.clone() };
+            let title = if tab.title.len() > 17 {
+                format!("{}...", &tab.title[..14])
+            } else {
+                tab.title.clone()
+            };
             cmds.push(PaintCommand::DrawText {
                 text: title,
-                rect: Rect { x: tab_x + 12.0, y: tab_y + 8.0, width: tab_w - 36.0, height: 18.0 },
+                rect: Rect {
+                    x: tab_x + 12.0,
+                    y: tab_y + 8.0,
+                    width: tab_w - 36.0,
+                    height: 18.0,
+                },
                 color: Color::new(0.95, 0.98, 1.0, 1.0),
                 font_size: 13.0,
                 is_fixed: true,
@@ -83,7 +107,12 @@ pub fn build_chrome_display_list(
             // Close Button
             cmds.push(PaintCommand::DrawText {
                 text: "x".to_string(),
-                rect: Rect { x: tab_x + tab_w - 20.0, y: tab_y + 7.0, width: 14.0, height: 14.0 },
+                rect: Rect {
+                    x: tab_x + tab_w - 20.0,
+                    y: tab_y + 7.0,
+                    width: 14.0,
+                    height: 14.0,
+                },
                 color: Color::new(0.60, 0.65, 0.75, 1.0),
                 font_size: 12.0,
                 is_fixed: true,
@@ -91,15 +120,29 @@ pub fn build_chrome_display_list(
         } else {
             // Inactive tab body
             cmds.push(PaintCommand::DrawRect {
-                rect: Rect { x: tab_x, y: tab_y + 2.0, width: tab_w, height: tab_h - 2.0 },
+                rect: Rect {
+                    x: tab_x,
+                    y: tab_y + 2.0,
+                    width: tab_w,
+                    height: tab_h - 2.0,
+                },
                 color: Color::new(0.065, 0.086, 0.125, 1.0), // #101620
                 border_radius: 5.0,
                 is_fixed: true,
             });
-            let title = if tab.title.len() > 17 { format!("{}...", &tab.title[..14]) } else { tab.title.clone() };
+            let title = if tab.title.len() > 17 {
+                format!("{}...", &tab.title[..14])
+            } else {
+                tab.title.clone()
+            };
             cmds.push(PaintCommand::DrawText {
                 text: title,
-                rect: Rect { x: tab_x + 12.0, y: tab_y + 9.0, width: tab_w - 36.0, height: 18.0 },
+                rect: Rect {
+                    x: tab_x + 12.0,
+                    y: tab_y + 9.0,
+                    width: tab_w - 36.0,
+                    height: 18.0,
+                },
                 color: Color::new(0.55, 0.60, 0.70, 1.0),
                 font_size: 12.0,
                 is_fixed: true,
@@ -107,7 +150,12 @@ pub fn build_chrome_display_list(
             // Close Button
             cmds.push(PaintCommand::DrawText {
                 text: "x".to_string(),
-                rect: Rect { x: tab_x + tab_w - 20.0, y: tab_y + 8.0, width: 14.0, height: 14.0 },
+                rect: Rect {
+                    x: tab_x + tab_w - 20.0,
+                    y: tab_y + 8.0,
+                    width: 14.0,
+                    height: 14.0,
+                },
                 color: Color::new(0.40, 0.45, 0.55, 1.0),
                 font_size: 12.0,
                 is_fixed: true,
@@ -118,14 +166,24 @@ pub fn build_chrome_display_list(
     // New Tab (+) Button
     let new_tab_x = 8.0 + tab_manager.tabs.len() as f32 * tab_stride;
     cmds.push(PaintCommand::DrawRect {
-        rect: Rect { x: new_tab_x, y: 7.0, width: 26.0, height: 24.0 },
+        rect: Rect {
+            x: new_tab_x,
+            y: 7.0,
+            width: 26.0,
+            height: 24.0,
+        },
         color: Color::new(0.098, 0.129, 0.188, 1.0),
         border_radius: 5.0,
         is_fixed: true,
     });
     cmds.push(PaintCommand::DrawText {
         text: "+".to_string(),
-        rect: Rect { x: new_tab_x + 8.0, y: 10.0, width: 14.0, height: 14.0 },
+        rect: Rect {
+            x: new_tab_x + 8.0,
+            y: 10.0,
+            width: 14.0,
+            height: 14.0,
+        },
         color: Color::new(0.70, 0.75, 0.85, 1.0),
         font_size: 14.0,
         is_fixed: true,
@@ -136,7 +194,12 @@ pub fn build_chrome_display_list(
     // ==========================================
     // Toolbar background
     cmds.push(PaintCommand::DrawRect {
-        rect: Rect { x: 0.0, y: TAB_BAR_HEIGHT, width, height: TOOLBAR_HEIGHT },
+        rect: Rect {
+            x: 0.0,
+            y: TAB_BAR_HEIGHT,
+            width,
+            height: TOOLBAR_HEIGHT,
+        },
         color: Color::new(0.098, 0.129, 0.188, 1.0), // #192130 (same as active tab)
         border_radius: 0.0,
         is_fixed: true,
@@ -148,17 +211,35 @@ pub fn build_chrome_display_list(
 
     // Back Button (<-)
     let can_back = tab_manager.active_tab().history.can_go_back();
-    let back_bg = if can_back { Color::new(0.14, 0.18, 0.26, 1.0) } else { Color::new(0.08, 0.10, 0.15, 1.0) };
-    let back_fg = if can_back { Color::new(0.9, 0.95, 1.0, 1.0) } else { Color::new(0.35, 0.40, 0.50, 1.0) };
+    let back_bg = if can_back {
+        Color::new(0.14, 0.18, 0.26, 1.0)
+    } else {
+        Color::new(0.08, 0.10, 0.15, 1.0)
+    };
+    let back_fg = if can_back {
+        Color::new(0.9, 0.95, 1.0, 1.0)
+    } else {
+        Color::new(0.35, 0.40, 0.50, 1.0)
+    };
     cmds.push(PaintCommand::DrawRect {
-        rect: Rect { x: 10.0, y: btn_y, width: btn_w, height: btn_h },
+        rect: Rect {
+            x: 10.0,
+            y: btn_y,
+            width: btn_w,
+            height: btn_h,
+        },
         color: back_bg,
         border_radius: 6.0,
         is_fixed: true,
     });
     cmds.push(PaintCommand::DrawText {
         text: "<".to_string(),
-        rect: Rect { x: 21.0, y: btn_y + 6.0, width: 14.0, height: 16.0 },
+        rect: Rect {
+            x: 21.0,
+            y: btn_y + 6.0,
+            width: 14.0,
+            height: 16.0,
+        },
         color: back_fg,
         font_size: 14.0,
         is_fixed: true,
@@ -166,17 +247,35 @@ pub fn build_chrome_display_list(
 
     // Forward Button (->)
     let can_fwd = tab_manager.active_tab().history.can_go_forward();
-    let fwd_bg = if can_fwd { Color::new(0.14, 0.18, 0.26, 1.0) } else { Color::new(0.08, 0.10, 0.15, 1.0) };
-    let fwd_fg = if can_fwd { Color::new(0.9, 0.95, 1.0, 1.0) } else { Color::new(0.35, 0.40, 0.50, 1.0) };
+    let fwd_bg = if can_fwd {
+        Color::new(0.14, 0.18, 0.26, 1.0)
+    } else {
+        Color::new(0.08, 0.10, 0.15, 1.0)
+    };
+    let fwd_fg = if can_fwd {
+        Color::new(0.9, 0.95, 1.0, 1.0)
+    } else {
+        Color::new(0.35, 0.40, 0.50, 1.0)
+    };
     cmds.push(PaintCommand::DrawRect {
-        rect: Rect { x: 46.0, y: btn_y, width: btn_w, height: btn_h },
+        rect: Rect {
+            x: 46.0,
+            y: btn_y,
+            width: btn_w,
+            height: btn_h,
+        },
         color: fwd_bg,
         border_radius: 6.0,
         is_fixed: true,
     });
     cmds.push(PaintCommand::DrawText {
         text: ">".to_string(),
-        rect: Rect { x: 57.0, y: btn_y + 6.0, width: 14.0, height: 16.0 },
+        rect: Rect {
+            x: 57.0,
+            y: btn_y + 6.0,
+            width: 14.0,
+            height: 16.0,
+        },
         color: fwd_fg,
         font_size: 14.0,
         is_fixed: true,
@@ -184,14 +283,24 @@ pub fn build_chrome_display_list(
 
     // Reload Button (R)
     cmds.push(PaintCommand::DrawRect {
-        rect: Rect { x: 82.0, y: btn_y, width: btn_w, height: btn_h },
+        rect: Rect {
+            x: 82.0,
+            y: btn_y,
+            width: btn_w,
+            height: btn_h,
+        },
         color: Color::new(0.14, 0.18, 0.26, 1.0),
         border_radius: 6.0,
         is_fixed: true,
     });
     cmds.push(PaintCommand::DrawText {
         text: "R".to_string(),
-        rect: Rect { x: 92.0, y: btn_y + 6.0, width: 14.0, height: 16.0 },
+        rect: Rect {
+            x: 92.0,
+            y: btn_y + 6.0,
+            width: 14.0,
+            height: 16.0,
+        },
         color: Color::new(0.22, 0.74, 0.97, 1.0),
         font_size: 13.0,
         is_fixed: true,
@@ -203,16 +312,27 @@ pub fn build_chrome_display_list(
     let omni_w = (width - omni_x - devtools_w - 20.0).max(200.0);
 
     cmds.push(PaintCommand::DrawRect {
-        rect: Rect { x: omni_x, y: btn_y, width: omni_w, height: btn_h },
+        rect: Rect {
+            x: omni_x,
+            y: btn_y,
+            width: omni_w,
+            height: btn_h,
+        },
         color: Color::new(0.05, 0.07, 0.10, 1.0), // #0d121a
-        border_radius: 15.0, // Sleek capsule shape
+        border_radius: 15.0,                      // Sleek capsule shape
         is_fixed: true,
     });
 
     // Security indicator inside Omnibox
     let is_internal = address_text.starts_with("kestrel://");
     let is_https = address_text.starts_with("https://");
-    let lock_text = if is_internal { "kestrel" } else if is_https { "secure" } else { "web" };
+    let lock_text = if is_internal {
+        "kestrel"
+    } else if is_https {
+        "secure"
+    } else {
+        "web"
+    };
     let lock_color = if is_internal {
         Color::new(0.22, 0.74, 0.97, 1.0) // Cyan
     } else if is_https {
@@ -222,7 +342,12 @@ pub fn build_chrome_display_list(
     };
     cmds.push(PaintCommand::DrawText {
         text: lock_text.to_string(),
-        rect: Rect { x: omni_x + 14.0, y: btn_y + 7.0, width: 50.0, height: 16.0 },
+        rect: Rect {
+            x: omni_x + 14.0,
+            y: btn_y + 7.0,
+            width: 50.0,
+            height: 16.0,
+        },
         color: lock_color,
         font_size: 11.0,
         is_fixed: true,
@@ -237,7 +362,12 @@ pub fn build_chrome_display_list(
     };
     cmds.push(PaintCommand::DrawText {
         text: format!("{} |", display_addr),
-        rect: Rect { x: omni_x + 68.0, y: btn_y + 7.0, width: omni_w - 140.0, height: 16.0 },
+        rect: Rect {
+            x: omni_x + 68.0,
+            y: btn_y + 7.0,
+            width: omni_w - 140.0,
+            height: 16.0,
+        },
         color: Color::new(0.90, 0.94, 1.0, 1.0),
         font_size: 13.0,
         is_fixed: true,
@@ -245,10 +375,23 @@ pub fn build_chrome_display_list(
 
     // Bookmark Star Action
     let star_x = omni_x + omni_w - 55.0;
-    let star_fg = if is_bookmarked { Color::new(0.98, 0.80, 0.08, 1.0) } else { Color::new(0.40, 0.45, 0.55, 1.0) };
+    let star_fg = if is_bookmarked {
+        Color::new(0.98, 0.80, 0.08, 1.0)
+    } else {
+        Color::new(0.40, 0.45, 0.55, 1.0)
+    };
     cmds.push(PaintCommand::DrawText {
-        text: if is_bookmarked { "★".to_string() } else { "☆".to_string() },
-        rect: Rect { x: star_x, y: btn_y + 6.0, width: 18.0, height: 18.0 },
+        text: if is_bookmarked {
+            "★".to_string()
+        } else {
+            "☆".to_string()
+        },
+        rect: Rect {
+            x: star_x,
+            y: btn_y + 6.0,
+            width: 18.0,
+            height: 18.0,
+        },
         color: star_fg,
         font_size: 14.0,
         is_fixed: true,
@@ -256,10 +399,19 @@ pub fn build_chrome_display_list(
 
     // Shield Badge Action
     let shield_x = omni_x + omni_w - 28.0;
-    let shield_fg = if blocked_trackers > 0 { Color::new(0.95, 0.25, 0.35, 1.0) } else { Color::new(0.10, 0.73, 0.50, 1.0) };
+    let shield_fg = if blocked_trackers > 0 {
+        Color::new(0.95, 0.25, 0.35, 1.0)
+    } else {
+        Color::new(0.10, 0.73, 0.50, 1.0)
+    };
     cmds.push(PaintCommand::DrawText {
         text: "S".to_string(),
-        rect: Rect { x: shield_x, y: btn_y + 6.0, width: 18.0, height: 18.0 },
+        rect: Rect {
+            x: shield_x,
+            y: btn_y + 6.0,
+            width: 18.0,
+            height: 18.0,
+        },
         color: shield_fg,
         font_size: 13.0,
         is_fixed: true,
@@ -268,14 +420,24 @@ pub fn build_chrome_display_list(
     // DevTools Button (Right of Omnibox)
     let devtools_x = width - devtools_w - 10.0;
     cmds.push(PaintCommand::DrawRect {
-        rect: Rect { x: devtools_x, y: btn_y, width: devtools_w, height: btn_h },
+        rect: Rect {
+            x: devtools_x,
+            y: btn_y,
+            width: devtools_w,
+            height: btn_h,
+        },
         color: Color::new(0.14, 0.18, 0.26, 1.0),
         border_radius: 6.0,
         is_fixed: true,
     });
     cmds.push(PaintCommand::DrawText {
         text: "DevTools".to_string(),
-        rect: Rect { x: devtools_x + 10.0, y: btn_y + 8.0, width: 56.0, height: 16.0 },
+        rect: Rect {
+            x: devtools_x + 10.0,
+            y: btn_y + 8.0,
+            width: 56.0,
+            height: 16.0,
+        },
         color: Color::new(0.22, 0.74, 0.97, 1.0),
         font_size: 11.0,
         is_fixed: true,
@@ -285,14 +447,24 @@ pub fn build_chrome_display_list(
     // 3. BOOKMARKS STRIP (y: 74.0 .. 100.0)
     // ==========================================
     cmds.push(PaintCommand::DrawRect {
-        rect: Rect { x: 0.0, y: 74.0, width, height: BOOKMARKS_BAR_HEIGHT },
+        rect: Rect {
+            x: 0.0,
+            y: 74.0,
+            width,
+            height: BOOKMARKS_BAR_HEIGHT,
+        },
         color: Color::new(0.065, 0.086, 0.125, 1.0), // #101620
         border_radius: 0.0,
         is_fixed: true,
     });
     // Border line under chrome
     cmds.push(PaintCommand::DrawRect {
-        rect: Rect { x: 0.0, y: 99.0, width, height: 1.0 },
+        rect: Rect {
+            x: 0.0,
+            y: 99.0,
+            width,
+            height: 1.0,
+        },
         color: Color::new(0.14, 0.18, 0.26, 1.0),
         border_radius: 0.0,
         is_fixed: true,
@@ -303,14 +475,24 @@ pub fn build_chrome_display_list(
     for bm in &bookmark_mgr.items {
         let chip_w = ((bm.title.len() * 7 + 16) as f32).max(50.0);
         cmds.push(PaintCommand::DrawRect {
-            rect: Rect { x: bm_x, y: 77.0, width: chip_w, height: 20.0 },
+            rect: Rect {
+                x: bm_x,
+                y: 77.0,
+                width: chip_w,
+                height: 20.0,
+            },
             color: Color::new(0.12, 0.15, 0.22, 1.0),
             border_radius: 4.0,
             is_fixed: true,
         });
         cmds.push(PaintCommand::DrawText {
             text: bm.title.clone(),
-            rect: Rect { x: bm_x + 8.0, y: 81.0, width: chip_w - 16.0, height: 14.0 },
+            rect: Rect {
+                x: bm_x + 8.0,
+                y: 81.0,
+                width: chip_w - 16.0,
+                height: 14.0,
+            },
             color: Color::new(0.38, 0.74, 0.98, 1.0),
             font_size: 11.0,
             is_fixed: true,
@@ -332,14 +514,24 @@ pub fn build_chrome_display_list(
 
     // History button
     cmds.push(PaintCommand::DrawRect {
-        rect: Rect { x: history_x, y: 77.0, width: history_w, height: 20.0 },
+        rect: Rect {
+            x: history_x,
+            y: 77.0,
+            width: history_w,
+            height: 20.0,
+        },
         color: Color::new(0.10, 0.13, 0.18, 1.0),
         border_radius: 4.0,
         is_fixed: true,
     });
     cmds.push(PaintCommand::DrawText {
         text: "History".to_string(),
-        rect: Rect { x: history_x + 6.0, y: 81.0, width: history_w - 12.0, height: 14.0 },
+        rect: Rect {
+            x: history_x + 6.0,
+            y: 81.0,
+            width: history_w - 12.0,
+            height: 14.0,
+        },
         color: Color::new(0.60, 0.65, 0.75, 1.0),
         font_size: 11.0,
         is_fixed: true,
@@ -347,14 +539,24 @@ pub fn build_chrome_display_list(
 
     // Settings button
     cmds.push(PaintCommand::DrawRect {
-        rect: Rect { x: settings_x, y: 77.0, width: settings_w, height: 20.0 },
+        rect: Rect {
+            x: settings_x,
+            y: 77.0,
+            width: settings_w,
+            height: 20.0,
+        },
         color: Color::new(0.10, 0.13, 0.18, 1.0),
         border_radius: 4.0,
         is_fixed: true,
     });
     cmds.push(PaintCommand::DrawText {
         text: "Settings".to_string(),
-        rect: Rect { x: settings_x + 6.0, y: 81.0, width: settings_w - 12.0, height: 14.0 },
+        rect: Rect {
+            x: settings_x + 6.0,
+            y: 81.0,
+            width: settings_w - 12.0,
+            height: 14.0,
+        },
         color: Color::new(0.60, 0.65, 0.75, 1.0),
         font_size: 11.0,
         is_fixed: true,
@@ -362,14 +564,24 @@ pub fn build_chrome_display_list(
 
     // About button
     cmds.push(PaintCommand::DrawRect {
-        rect: Rect { x: about_x, y: 77.0, width: about_w, height: 20.0 },
+        rect: Rect {
+            x: about_x,
+            y: 77.0,
+            width: about_w,
+            height: 20.0,
+        },
         color: Color::new(0.10, 0.13, 0.18, 1.0),
         border_radius: 4.0,
         is_fixed: true,
     });
     cmds.push(PaintCommand::DrawText {
         text: "About".to_string(),
-        rect: Rect { x: about_x + 6.0, y: 81.0, width: about_w - 12.0, height: 14.0 },
+        rect: Rect {
+            x: about_x + 6.0,
+            y: 81.0,
+            width: about_w - 12.0,
+            height: 14.0,
+        },
         color: Color::new(0.60, 0.65, 0.75, 1.0),
         font_size: 11.0,
         is_fixed: true,

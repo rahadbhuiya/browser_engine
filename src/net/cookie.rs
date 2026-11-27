@@ -136,8 +136,8 @@ impl Cookie {
         }
 
         let target_domain = target_domain.to_lowercase();
-        let domain_match = target_domain == self.domain
-            || (target_domain.ends_with(&format!(".{}", self.domain)));
+        let domain_match =
+            target_domain == self.domain || (target_domain.ends_with(&format!(".{}", self.domain)));
 
         if !domain_match {
             return false;
@@ -184,9 +184,13 @@ impl Cookie {
             Some("None") => SameSite::None,
             _ => SameSite::Lax,
         };
-        let expires_at = map
-            .get("expires_at")
-            .and_then(|s| if s == "null" { None } else { s.parse::<u64>().ok() });
+        let expires_at = map.get("expires_at").and_then(|s| {
+            if s == "null" {
+                None
+            } else {
+                s.parse::<u64>().ok()
+            }
+        });
 
         Some(Cookie {
             name,
@@ -249,7 +253,12 @@ impl CookieJar {
     }
 
     /// Generates the serialized `Cookie: name1=val1; name2=val2` string for an outgoing request.
-    pub fn get_cookie_header(&self, target_domain: &str, target_path: &str, is_https: bool) -> Option<String> {
+    pub fn get_cookie_header(
+        &self,
+        target_domain: &str,
+        target_path: &str,
+        is_https: bool,
+    ) -> Option<String> {
         let mut map = self.cookies.write().unwrap();
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -260,7 +269,9 @@ impl CookieJar {
 
         for (domain, list) in map.iter_mut() {
             let target_domain_lower = target_domain.to_lowercase();
-            if target_domain_lower == *domain || target_domain_lower.ends_with(&format!(".{}", domain)) {
+            if target_domain_lower == *domain
+                || target_domain_lower.ends_with(&format!(".{}", domain))
+            {
                 // Prune expired cookies
                 list.retain(|c| !c.is_expired(now));
 
@@ -344,7 +355,9 @@ impl CookieJar {
         let home = std::env::var("USERPROFILE")
             .or_else(|_| std::env::var("HOME"))
             .unwrap_or_else(|_| ".".to_string());
-        PathBuf::from(home).join(".browser_engine").join("cookies.json")
+        PathBuf::from(home)
+            .join(".browser_engine")
+            .join("cookies.json")
     }
 }
 
@@ -509,13 +522,21 @@ mod tests {
     fn test_cookie_jar_domain_isolation() {
         let jar = CookieJar::new();
 
-        let cookie1 = Cookie::parse("user=alice; Domain=example.com; Path=/", "example.com", "/").unwrap();
-        let cookie2 = Cookie::parse("admin=root; Domain=attacker.com; Path=/", "attacker.com", "/").unwrap();
+        let cookie1 =
+            Cookie::parse("user=alice; Domain=example.com; Path=/", "example.com", "/").unwrap();
+        let cookie2 = Cookie::parse(
+            "admin=root; Domain=attacker.com; Path=/",
+            "attacker.com",
+            "/",
+        )
+        .unwrap();
 
         jar.store(cookie1);
         jar.store(cookie2);
 
-        let header = jar.get_cookie_header("example.com", "/dashboard", true).unwrap();
+        let header = jar
+            .get_cookie_header("example.com", "/dashboard", true)
+            .unwrap();
         assert_eq!(header, "user=alice");
         assert!(!header.contains("admin=root"));
     }
@@ -539,9 +560,19 @@ mod tests {
 
         let jar = CookieJar::new();
         // Persistent cookie with Max-Age 3600
-        let persistent = Cookie::parse("auth_token=secret123; Domain=example.com; Path=/; Max-Age=3600; Secure; HttpOnly", "example.com", "/").unwrap();
+        let persistent = Cookie::parse(
+            "auth_token=secret123; Domain=example.com; Path=/; Max-Age=3600; Secure; HttpOnly",
+            "example.com",
+            "/",
+        )
+        .unwrap();
         // Session cookie (no Max-Age/Expires)
-        let session = Cookie::parse("session_id=sess456; Domain=example.com; Path=/", "example.com", "/").unwrap();
+        let session = Cookie::parse(
+            "session_id=sess456; Domain=example.com; Path=/",
+            "example.com",
+            "/",
+        )
+        .unwrap();
 
         jar.store(persistent);
         jar.store(session);
@@ -556,7 +587,9 @@ mod tests {
 
         // Load into a new jar
         let loaded_jar = CookieJar::load_from_disk(&cookie_file).unwrap();
-        let loaded_header = loaded_jar.get_cookie_header("example.com", "/", true).unwrap();
+        let loaded_header = loaded_jar
+            .get_cookie_header("example.com", "/", true)
+            .unwrap();
         // Persistent cookie should be restored
         assert!(loaded_header.contains("auth_token=secret123"));
         // Session cookie must NOT be persisted to disk

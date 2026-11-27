@@ -65,8 +65,8 @@ pub fn format_url_or_search_query(input: &str) -> String {
         return trimmed.to_string();
     }
 
-    let is_domain = !trimmed.contains(' ')
-        && (trimmed.contains('.') || trimmed.starts_with("localhost"));
+    let is_domain =
+        !trimmed.contains(' ') && (trimmed.contains('.') || trimmed.starts_with("localhost"));
 
     if is_domain {
         if trimmed == "google.com" {
@@ -79,4 +79,3 @@ pub fn format_url_or_search_query(input: &str) -> String {
         format!("https://www.google.com/search?q={}", encoded_query)
     }
 }
-

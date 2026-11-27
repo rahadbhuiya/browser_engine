@@ -1,9 +1,4 @@
-// Batch 3 — Selector matching
-//
-// Matches a CSS Selector (a combinator chain from Batch 2's CSSOM) against a
-// specific node in the DOM tree (Batch 1). Standard engines match right-to-
-// left (check the rightmost simple selector against the candidate element
-// first, since it's cheapest to reject non-matches early) -- we do the same.
+//! CSS selector matching engine (right-to-left combinator traversal).
 
 use crate::css::{Combinator, Selector, SimpleSelector};
 use crate::dom::Dom;
@@ -42,8 +37,7 @@ fn satisfies_combinators(
         Combinator::Descendant => {
             let mut current = dom.nodes[node_idx].parent;
             while let Some(p) = current {
-                if matches_simple(dom, p, target) && satisfies_combinators(dom, p, steps, idx - 1)
-                {
+                if matches_simple(dom, p, target) && satisfies_combinators(dom, p, steps, idx - 1) {
                     return true;
                 }
                 current = dom.nodes[p].parent;
@@ -51,11 +45,15 @@ fn satisfies_combinators(
             false
         }
         Combinator::Child => match dom.nodes[node_idx].parent {
-            Some(p) => matches_simple(dom, p, target) && satisfies_combinators(dom, p, steps, idx - 1),
+            Some(p) => {
+                matches_simple(dom, p, target) && satisfies_combinators(dom, p, steps, idx - 1)
+            }
             None => false,
         },
         Combinator::NextSibling => match dom.preceding_sibling(node_idx) {
-            Some(p) => matches_simple(dom, p, target) && satisfies_combinators(dom, p, steps, idx - 1),
+            Some(p) => {
+                matches_simple(dom, p, target) && satisfies_combinators(dom, p, steps, idx - 1)
+            }
             None => false,
         },
         Combinator::SubsequentSibling => dom.preceding_siblings(node_idx).into_iter().any(|s| {
@@ -198,13 +196,14 @@ fn matches_pseudo(
         PseudoClass::Empty => {
             if let Some(node) = dom.nodes.get(node_idx) {
                 node.children.is_empty()
-                    || node.children.iter().all(|&c| {
-                        match &dom.nodes[c].node_type {
+                    || node
+                        .children
+                        .iter()
+                        .all(|&c| match &dom.nodes[c].node_type {
                             crate::dom::NodeType::Comment(_) => true,
                             crate::dom::NodeType::Text(t) => t.trim().is_empty(),
                             _ => false,
-                        }
-                    })
+                        })
             } else {
                 false
             }

@@ -1,8 +1,7 @@
-use std::collections::HashMap;
-use std::sync::Arc;
 use super::bytecode::{Chunk, OpCode, Value};
 use super::gc::GarbageCollector;
-
+use std::collections::HashMap;
+use std::sync::Arc;
 
 pub type NativeFnHandler = Arc<dyn Fn(&mut VM, &[Value]) -> Value>;
 
@@ -37,11 +36,10 @@ impl VM {
     where
         F: Fn(&mut VM, &[Value]) -> Value + 'static,
     {
-        self.globals.insert(name.to_string(), Value::NativeFn(name.to_string()));
+        self.globals
+            .insert(name.to_string(), Value::NativeFn(name.to_string()));
         self.native_fns.insert(name.to_string(), Arc::new(handler));
     }
-
-
 
     pub fn push(&mut self, val: Value) {
         self.stack.push(val);
@@ -89,9 +87,15 @@ impl VM {
                     let a = self.pop();
                     match (a, b) {
                         (Value::Number(n1), Value::Number(n2)) => self.push(Value::Number(n1 + n2)),
-                        (Value::String(s1), Value::String(s2)) => self.push(Value::String(format!("{}{}", s1, s2))),
-                        (Value::String(s1), Value::Number(n2)) => self.push(Value::String(format!("{}{}", s1, n2))),
-                        (Value::Number(n1), Value::String(s2)) => self.push(Value::String(format!("{}{}", n1, s2))),
+                        (Value::String(s1), Value::String(s2)) => {
+                            self.push(Value::String(format!("{}{}", s1, s2)))
+                        }
+                        (Value::String(s1), Value::Number(n2)) => {
+                            self.push(Value::String(format!("{}{}", s1, n2)))
+                        }
+                        (Value::Number(n1), Value::String(s2)) => {
+                            self.push(Value::String(format!("{}{}", n1, s2)))
+                        }
                         _ => self.push(Value::Undefined),
                     }
                 }
@@ -128,7 +132,9 @@ impl VM {
                     let b = self.pop();
                     let a = self.pop();
                     match (a, b) {
-                        (Value::Number(n1), Value::Number(n2)) => self.push(Value::Boolean(n1 < n2)),
+                        (Value::Number(n1), Value::Number(n2)) => {
+                            self.push(Value::Boolean(n1 < n2))
+                        }
                         _ => self.push(Value::Boolean(false)),
                     }
                 }
@@ -136,7 +142,9 @@ impl VM {
                     let b = self.pop();
                     let a = self.pop();
                     match (a, b) {
-                        (Value::Number(n1), Value::Number(n2)) => self.push(Value::Boolean(n1 > n2)),
+                        (Value::Number(n1), Value::Number(n2)) => {
+                            self.push(Value::Boolean(n1 > n2))
+                        }
                         _ => self.push(Value::Boolean(false)),
                     }
                 }

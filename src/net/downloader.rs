@@ -1,6 +1,6 @@
+use super::fetch;
 use std::fs::File;
 use std::io::Write;
-use super::fetch;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct DownloadItem {
@@ -16,7 +16,9 @@ pub struct DownloadManager {
 
 impl DownloadManager {
     pub fn new() -> Self {
-        DownloadManager { downloads: Vec::new() }
+        DownloadManager {
+            downloads: Vec::new(),
+        }
     }
 
     pub fn download_file(&mut self, url: &str, dest_path: &str) -> Result<usize, String> {
@@ -25,7 +27,11 @@ impl DownloadManager {
         let mut file = File::create(dest_path).map_err(|e| e.to_string())?;
         file.write_all(&bytes).map_err(|e| e.to_string())?;
 
-        let filename = dest_path.split('\\').last().unwrap_or(dest_path).to_string();
+        let filename = dest_path
+            .split('\\')
+            .last()
+            .unwrap_or(dest_path)
+            .to_string();
         self.downloads.push(DownloadItem {
             url: url.to_string(),
             filename,
@@ -40,7 +46,9 @@ impl DownloadManager {
         if self.downloads.is_empty() {
             return String::new();
         }
-        let mut html = String::from(r#"<div class="downloads-bar" style="background-color: #0f172a; padding: 4px 12px; border-top: 1px solid #1e293b;">"#);
+        let mut html = String::from(
+            r#"<div class="downloads-bar" style="background-color: #0f172a; padding: 4px 12px; border-top: 1px solid #1e293b;">"#,
+        );
         html.push_str(r#"<span style="font-weight: bold; color: #38bdf8; margin-right: 10px; font-size: 12px;">DOWNLOADS:</span>"#);
         for item in &self.downloads {
             html.push_str(&format!(

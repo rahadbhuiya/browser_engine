@@ -1,14 +1,43 @@
-// Batch 2 — CSSOM data structures
+//! CSS Object Model (CSSOM) definitions.
+
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct MediaQuery {
+    pub min_width: Option<f32>,
+    pub max_width: Option<f32>,
+    pub prefers_dark: Option<bool>,
+}
+
+impl MediaQuery {
+    pub fn matches(&self, viewport_width: f32, is_dark: bool) -> bool {
+        if let Some(min_w) = self.min_width {
+            if viewport_width < min_w {
+                return false;
+            }
+        }
+        if let Some(max_w) = self.max_width {
+            if viewport_width > max_w {
+                return false;
+            }
+        }
+        if let Some(dark) = self.prefers_dark {
+            if is_dark != dark {
+                return false;
+            }
+        }
+        true
+    }
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Stylesheet {
     pub rules: Vec<Rule>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct Rule {
     pub selectors: Vec<Selector>,
     pub declarations: Vec<Declaration>,
+    pub media_query: Option<MediaQuery>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -27,9 +56,9 @@ pub struct Selector {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Combinator {
-    Descendant, // "a b"
-    Child,      // "a > b"
-    NextSibling, // "a + b"
+    Descendant,        // "a b"
+    Child,             // "a > b"
+    NextSibling,       // "a + b"
     SubsequentSibling, // "a ~ b"
 }
 
@@ -87,13 +116,13 @@ impl PseudoClass {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AttributeMatcher {
-    Exists,                    // [attr]
-    Exact(String),             // [attr="value"]
-    Includes(String),          // [attr~="value"]
-    DashMatch(String),         // [attr|="value"]
-    Prefix(String),            // [attr^="value"]
-    Suffix(String),            // [attr$="value"]
-    Substring(String),         // [attr*="value"]
+    Exists,            // [attr]
+    Exact(String),     // [attr="value"]
+    Includes(String),  // [attr~="value"]
+    DashMatch(String), // [attr|="value"]
+    Prefix(String),    // [attr^="value"]
+    Suffix(String),    // [attr$="value"]
+    Substring(String), // [attr*="value"]
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -123,7 +152,8 @@ impl Selector {
             if simple.id.is_some() {
                 spec.0 += 1;
             }
-            spec.1 += (simple.classes.len() + simple.pseudo_classes.len() + simple.attributes.len()) as u32;
+            spec.1 += (simple.classes.len() + simple.pseudo_classes.len() + simple.attributes.len())
+                as u32;
             if simple.tag.is_some() {
                 spec.2 += 1;
             }

@@ -61,7 +61,8 @@ impl DevTools {
     }
 
     pub fn record_network_request(&mut self, method: &str, url: &str, status: u16) {
-        self.network_requests.push(format!("[{}] {} -> Status: {}", method, url, status));
+        self.network_requests
+            .push(format!("[{}] {} -> Status: {}", method, url, status));
     }
 
     pub fn inspect_dom(dom: &Dom) -> String {
@@ -81,12 +82,16 @@ impl DevTools {
                 out.push_str(&format!("{indent}#document (id={})\n", idx));
             }
             NodeType::Element(data) => {
-                let attrs_str = data.attributes
+                let attrs_str = data
+                    .attributes
                     .iter()
                     .map(|(k, v)| format!("{}=\"{}\"", k, v))
                     .collect::<Vec<_>>()
                     .join(" ");
-                out.push_str(&format!("{indent}<{} {}> (id={})\n", data.tag, attrs_str, idx));
+                out.push_str(&format!(
+                    "{indent}<{} {}> (id={})\n",
+                    data.tag, attrs_str, idx
+                ));
             }
             NodeType::Text(text) => {
                 let trimmed = text.trim();
@@ -128,10 +133,26 @@ impl DevTools {
             return String::new();
         }
 
-        let tab_elements_class = if self.active_tab == DevToolsTab::Elements { "devtools-tab devtools-tab-active" } else { "devtools-tab" };
-        let tab_console_class = if self.active_tab == DevToolsTab::Console { "devtools-tab devtools-tab-active" } else { "devtools-tab" };
-        let tab_network_class = if self.active_tab == DevToolsTab::Network { "devtools-tab devtools-tab-active" } else { "devtools-tab" };
-        let tab_perf_class = if self.active_tab == DevToolsTab::Performance { "devtools-tab devtools-tab-active" } else { "devtools-tab" };
+        let tab_elements_class = if self.active_tab == DevToolsTab::Elements {
+            "devtools-tab devtools-tab-active"
+        } else {
+            "devtools-tab"
+        };
+        let tab_console_class = if self.active_tab == DevToolsTab::Console {
+            "devtools-tab devtools-tab-active"
+        } else {
+            "devtools-tab"
+        };
+        let tab_network_class = if self.active_tab == DevToolsTab::Network {
+            "devtools-tab devtools-tab-active"
+        } else {
+            "devtools-tab"
+        };
+        let tab_perf_class = if self.active_tab == DevToolsTab::Performance {
+            "devtools-tab devtools-tab-active"
+        } else {
+            "devtools-tab"
+        };
 
         let content_html = match self.active_tab {
             DevToolsTab::Elements => self.render_elements_tab(dom, url),
@@ -157,11 +178,7 @@ impl DevTools {
                 </div>
             </div>
             "#,
-            tab_elements_class,
-            tab_console_class,
-            tab_network_class,
-            tab_perf_class,
-            content_html
+            tab_elements_class, tab_console_class, tab_network_class, tab_perf_class, content_html
         )
     }
 
@@ -187,7 +204,13 @@ impl DevTools {
         )
     }
 
-    fn render_dom_tree_slice(dom: &Dom, idx: usize, depth: usize, max_depth: usize, out: &mut String) {
+    fn render_dom_tree_slice(
+        dom: &Dom,
+        idx: usize,
+        depth: usize,
+        max_depth: usize,
+        out: &mut String,
+    ) {
         if idx >= dom.nodes.len() || depth > max_depth {
             return;
         }
@@ -198,13 +221,18 @@ impl DevTools {
                 out.push_str(&format!("<p class=\"devtools-node\"><span class=\"devtools-tag\">#document</span> (id={})</p>", idx));
             }
             NodeType::Element(data) => {
-                let attrs_str = data.attributes
+                let attrs_str = data
+                    .attributes
                     .iter()
                     .take(3)
                     .map(|(k, v)| format!("<span class=\"devtools-attr\">{}</span>=\"{}\"", k, v))
                     .collect::<Vec<_>>()
                     .join(" ");
-                let attrs_display = if attrs_str.is_empty() { String::new() } else { format!(" {}", attrs_str) };
+                let attrs_display = if attrs_str.is_empty() {
+                    String::new()
+                } else {
+                    format!(" {}", attrs_str)
+                };
                 out.push_str(&format!(
                     "<p class=\"devtools-node\">{}&lt;<span class=\"devtools-tag\">{}</span>{}&gt; (id={}, children={})</p>",
                     indent, data.tag, attrs_display, idx, node.children.len()
@@ -213,11 +241,17 @@ impl DevTools {
             NodeType::Text(text) => {
                 let trimmed = text.trim();
                 if !trimmed.is_empty() && trimmed.len() <= 60 {
-                    out.push_str(&format!("<p class=\"devtools-text-node\">{}\"{}\"</p>", indent, trimmed));
+                    out.push_str(&format!(
+                        "<p class=\"devtools-text-node\">{}\"{}\"</p>",
+                        indent, trimmed
+                    ));
                 }
             }
             NodeType::Comment(cmt) => {
-                out.push_str(&format!("<p class=\"devtools-comment\">{}&lt;!-- {} --&gt;</p>", indent, cmt));
+                out.push_str(&format!(
+                    "<p class=\"devtools-comment\">{}&lt;!-- {} --&gt;</p>",
+                    indent, cmt
+                ));
             }
         }
 
@@ -229,7 +263,10 @@ impl DevTools {
     fn render_console_tab(&self) -> String {
         let mut logs_html = String::new();
         for log in &self.console_logs {
-            logs_html.push_str(&format!("<p class=\"devtools-console-entry\">&gt; {}</p>", log));
+            logs_html.push_str(&format!(
+                "<p class=\"devtools-console-entry\">&gt; {}</p>",
+                log
+            ));
         }
         format!(
             r#"
@@ -245,7 +282,10 @@ impl DevTools {
     }
 
     fn render_network_tab(&self, url: &str) -> String {
-        let mut req_html = format!("<p class=\"devtools-net-entry\">[GET] {} -> 200 OK (TLS 1.3 | rustls)</p>", url);
+        let mut req_html = format!(
+            "<p class=\"devtools-net-entry\">[GET] {} -> 200 OK (TLS 1.3 | rustls)</p>",
+            url
+        );
         for req in &self.network_requests {
             req_html.push_str(&format!("<p class=\"devtools-net-entry\">{}</p>", req));
         }

@@ -14,7 +14,9 @@ pub use cookie::{Cookie, CookieJar, SameSite};
 pub use downloader::{DownloadItem, DownloadManager};
 pub use fetch::fetch;
 pub use http::{HttpRequest, HttpResponse, UserAgentMode};
-pub use resource_loader::{discover_resources, resolve_url, AsyncImagePipeline, DiscoveredResources, ResourceLoader};
+pub use resource_loader::{
+    discover_resources, resolve_url, AsyncImagePipeline, DiscoveredResources, ResourceLoader,
+};
 pub use url_parser::{format_url_or_search_query, ParsedUrl, Scheme};
 pub use websocket::{WebSocketClient, WebSocketFrame};
 
@@ -24,14 +26,22 @@ mod tests {
 
     #[test]
     fn formats_search_queries_and_urls() {
-        assert_eq!(format_url_or_search_query("rust tutorial"), "https://www.google.com/search?q=rust+tutorial");
-        assert_eq!(format_url_or_search_query("example.com"), "https://example.com");
-        assert_eq!(format_url_or_search_query("http://example.com"), "http://example.com");
+        assert_eq!(
+            format_url_or_search_query("rust tutorial"),
+            "https://www.google.com/search?q=rust+tutorial"
+        );
+        assert_eq!(
+            format_url_or_search_query("example.com"),
+            "https://example.com"
+        );
+        assert_eq!(
+            format_url_or_search_query("http://example.com"),
+            "http://example.com"
+        );
     }
 
     #[test]
     fn parses_valid_http_and_https_urls() {
-
         let http_url = ParsedUrl::parse("http://example.com/page").unwrap();
         assert_eq!(http_url.scheme, Scheme::Http);
         assert_eq!(http_url.host, "example.com");
@@ -67,7 +77,10 @@ mod tests {
         let resp = HttpResponse::parse(raw_resp).unwrap();
         assert_eq!(resp.status_code, 200);
         assert_eq!(resp.status_text, "OK");
-        assert_eq!(resp.headers.get("content-type"), Some(&"text/html".to_string()));
+        assert_eq!(
+            resp.headers.get("content-type"),
+            Some(&"text/html".to_string())
+        );
         assert_eq!(resp.body_as_string(), "Hello World!!");
     }
 
@@ -96,7 +109,12 @@ mod tests {
     #[test]
     fn test_cache_storage_manager() {
         let mut cache_mgr = CacheStorageManager::new();
-        cache_mgr.put("example.com", "v1", "https://example.com/app.js", b"console.log('hi');");
+        cache_mgr.put(
+            "example.com",
+            "v1",
+            "https://example.com/app.js",
+            b"console.log('hi');",
+        );
 
         let entry = cache_mgr.match_url("example.com", "v1", "https://example.com/app.js");
         assert!(entry.is_some());

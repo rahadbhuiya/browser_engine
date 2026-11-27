@@ -1,6 +1,6 @@
+use super::pipeline::{MediaElementState, MediaType, PlaybackState};
 use crate::layout::Rect;
 use crate::paint::{Color, PaintCommand};
-use super::pipeline::{MediaElementState, MediaType, PlaybackState};
 
 /// Hit test target on visual media controls overlay.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -94,7 +94,12 @@ impl MediaControls {
     }
 
     /// Performs hit testing against interactive control elements.
-    pub fn hit_test(&self, media_rect: Rect, click_x: f32, click_y: f32) -> Option<MediaControlHit> {
+    pub fn hit_test(
+        &self,
+        media_rect: Rect,
+        click_x: f32,
+        click_y: f32,
+    ) -> Option<MediaControlHit> {
         if self.play_pause_rect.contains(click_x, click_y) {
             return Some(MediaControlHit::PlayPauseButton);
         }
@@ -108,7 +113,8 @@ impl MediaControls {
             && click_y >= self.seek_bar_rect.y - 6.0
             && click_y <= self.seek_bar_rect.y + self.seek_bar_rect.height + 6.0
         {
-            let normalized = ((click_x - self.seek_bar_rect.x) / self.seek_bar_rect.width).clamp(0.0, 1.0);
+            let normalized =
+                ((click_x - self.seek_bar_rect.x) / self.seek_bar_rect.width).clamp(0.0, 1.0);
             return Some(MediaControlHit::SeekBar(normalized));
         }
 
@@ -128,7 +134,11 @@ impl MediaControls {
     }
 
     /// Generates high-fidelity paint commands to render the controls bar.
-    pub fn build_paint_commands(&self, state: &MediaElementState, media_rect: Rect) -> Vec<PaintCommand> {
+    pub fn build_paint_commands(
+        &self,
+        state: &MediaElementState,
+        media_rect: Rect,
+    ) -> Vec<PaintCommand> {
         let mut cmds = Vec::new();
 
         // 1. If Video, render video surface frame
@@ -147,7 +157,12 @@ impl MediaControls {
                 let center_y = media_rect.y + media_rect.height / 2.0 - 10.0;
                 cmds.push(PaintCommand::DrawText {
                     text: "▶".to_string(),
-                    rect: Rect { x: center_x, y: center_y, width: 24.0, height: 24.0 },
+                    rect: Rect {
+                        x: center_x,
+                        y: center_y,
+                        width: 24.0,
+                        height: 24.0,
+                    },
                     color: Color::new(1.0, 1.0, 1.0, 0.8),
                     font_size: 24.0,
                     is_fixed: false,
@@ -173,7 +188,11 @@ impl MediaControls {
         });
 
         // 3. Play / Pause button
-        let play_glyph = if state.state == PlaybackState::Playing { "❚❚" } else { "▶" };
+        let play_glyph = if state.state == PlaybackState::Playing {
+            "❚❚"
+        } else {
+            "▶"
+        };
         cmds.push(PaintCommand::DrawText {
             text: play_glyph.to_string(),
             rect: self.play_pause_rect,
@@ -227,7 +246,10 @@ impl MediaControls {
             // Scrubber knob
             let knob_size = 10.0;
             let knob_rect = Rect {
-                x: (fill_rect.x + fill_rect.width - knob_size / 2.0).clamp(self.seek_bar_rect.x, self.seek_bar_rect.x + self.seek_bar_rect.width - knob_size),
+                x: (fill_rect.x + fill_rect.width - knob_size / 2.0).clamp(
+                    self.seek_bar_rect.x,
+                    self.seek_bar_rect.x + self.seek_bar_rect.width - knob_size,
+                ),
                 y: self.seek_bar_rect.y - 1.0,
                 width: knob_size,
                 height: knob_size,
@@ -255,7 +277,11 @@ impl MediaControls {
         });
 
         // 8. Mute / Volume icon
-        let vol_glyph = if state.muted || state.volume == 0.0 { "[M]" } else { "[V]" };
+        let vol_glyph = if state.muted || state.volume == 0.0 {
+            "[M]"
+        } else {
+            "[V]"
+        };
         cmds.push(PaintCommand::DrawText {
             text: vol_glyph.to_string(),
             rect: self.mute_rect,

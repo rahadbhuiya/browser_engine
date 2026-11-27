@@ -41,7 +41,11 @@ impl ContextMenu {
         let item_height = 28.0;
         let total_height = self.items.len() as f32 * item_height;
 
-        if click_x >= self.x && click_x <= (self.x + width) && click_y >= self.y && click_y <= (self.y + total_height) {
+        if click_x >= self.x
+            && click_x <= (self.x + width)
+            && click_y >= self.y
+            && click_y <= (self.y + total_height)
+        {
             let index = ((click_y - self.y) / item_height) as usize;
             if index < self.items.len() {
                 return Some(&self.items[index]);

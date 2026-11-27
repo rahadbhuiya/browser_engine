@@ -94,7 +94,11 @@ impl NavBar {
             ("☆", "#94a3b8", "Bookmark")
         };
 
-        let shield_color = if blocked_trackers > 0 { "#f43f5e" } else { "#10b981" };
+        let shield_color = if blocked_trackers > 0 {
+            "#f43f5e"
+        } else {
+            "#10b981"
+        };
 
         format!(
             r#"
@@ -220,8 +224,7 @@ mod tests {
     #[test]
     fn test_navbar_render_html_contains_buttons_and_shortcuts() {
         let navbar = NavBar::new();
-        let html_enabled =
-            navbar.render_html("https://example.com", true, false, true, 2, "");
+        let html_enabled = navbar.render_html("https://example.com", true, false, true, 2, "");
         assert!(html_enabled.contains("&lt; Back"));
         assert!(html_enabled.contains("Forward &gt;"));
         assert!(html_enabled.contains("&#x21bb; Reload"));

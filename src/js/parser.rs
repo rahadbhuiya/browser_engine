@@ -189,11 +189,12 @@ impl JsParser {
 
     fn parse_return_statement(&mut self) -> Option<Stmt> {
         self.advance(); // consume 'return'
-        let expr = if self.check(&Token::Semicolon) || self.check(&Token::RBrace) || self.is_at_end() {
-            None
-        } else {
-            self.parse_expression(Precedence::None)
-        };
+        let expr =
+            if self.check(&Token::Semicolon) || self.check(&Token::RBrace) || self.is_at_end() {
+                None
+            } else {
+                self.parse_expression(Precedence::None)
+            };
         self.consume_semicolon();
         Some(Stmt::Return(expr))
     }
@@ -268,9 +269,17 @@ impl JsParser {
                     value: Box::new(right),
                 })
             }
-            Token::Plus | Token::Minus | Token::Star | Token::Slash | Token::EqualEqual
-            | Token::EqualEqualEqual | Token::NotEqual | Token::Less | Token::LessEqual
-            | Token::Greater | Token::GreaterEqual => {
+            Token::Plus
+            | Token::Minus
+            | Token::Star
+            | Token::Slash
+            | Token::EqualEqual
+            | Token::EqualEqualEqual
+            | Token::NotEqual
+            | Token::Less
+            | Token::LessEqual
+            | Token::Greater
+            | Token::GreaterEqual => {
                 let op = match tok {
                     Token::Plus => BinaryOp::Add,
                     Token::Minus => BinaryOp::Sub,

@@ -1,13 +1,4 @@
-// Batch 2 — CSS Tokenizer
-//
-// Scans raw CSS source into a CssToken stream. Not a full implementation of the
-// CSS Syntax Module state machine (no escape sequences, url(), unicode-range yet),
-// but enough to tokenize real-world stylesheets: selectors, declarations, strings,
-// numbers, comments.
-//
-// SECURITY NOTE: same rule as the HTML tokenizer — malformed/truncated CSS must
-// never panic. Every branch has a defined fallback (see `advance_or_stop` usage
-// and the `None =>` arms below).
+//! CSS lexer and tokenizer.
 
 use super::token::CssToken;
 

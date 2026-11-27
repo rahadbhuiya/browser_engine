@@ -76,7 +76,9 @@ impl AddressBar {
             return String::new();
         }
 
-        let mut html = String::from(r#"<div class="suggestions" style="background-color: #111827; border: 1px solid #374151; border-radius: 8px; padding: 4px; margin-top: 4px; box-shadow: 0 8px 24px rgba(0,0,0,0.6);">"#);
+        let mut html = String::from(
+            r#"<div class="suggestions" style="background-color: #111827; border: 1px solid #374151; border-radius: 8px; padding: 4px; margin-top: 4px; box-shadow: 0 8px 24px rgba(0,0,0,0.6);">"#,
+        );
         for item in &suggestions {
             html.push_str(&format!(
                 r#"<div style="padding: 6px 12px; color: #cbd5e1; font-size: 13px; font-weight: bold; border-bottom: 1px solid #1f2937;">{}</div>"#,

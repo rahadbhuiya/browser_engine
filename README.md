@@ -83,8 +83,11 @@ The engine does not rely on Chromium, WebKit, or Gecko internals. It implements 
 - **CSS Custom Properties & Variables:** Full support for `--*` custom properties with DOM tree inheritance and recursive `var(--name, fallback)` resolution.
 - **HTML5 User-Agent Default Stylesheet:** Built-in standard styling for semantic elements, tables, lists, buttons, headings, and modern form controls.
 
-### 3. Box Model Layout Engine
+### 3. Box Model, CSS Grid & Flexbox Layout Engine
 - **CSS Box Model:** Computes exact coordinates for content, padding, border, and margin geometry.
+- **CSS Grid Layout:** Multi-track grid layout (`display: grid`), supporting `grid-template-columns`, `grid-template-rows`, `fr` flexible units, `repeat(...)`, and `gap` distribution.
+- **Advanced Flexbox:** Modern flex layout supporting multi-line row breaking (`flex-wrap: wrap`), `flex-grow`, and cross-axis alignment (`align-self`, `align-items`).
+- **Media Queries Engine:** Viewport-aware cascade resolution for responsive design (`@media (min-width: ...)`, `@media (max-width: ...)`, `@media (prefers-color-scheme: dark)`).
 - **Formatting Contexts:** Supports vertical block stacking, explicit and auto dimensions, overflow wrapping, and `display: none` pruning.
 
 ### 4. GPU-Accelerated Hardware Compositor

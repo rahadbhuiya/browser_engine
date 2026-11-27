@@ -25,21 +25,28 @@ impl IndexedDbManager {
     }
 
     pub fn open_db(&mut self, domain: &str, db_name: &str, version: u32) {
-        let domain_dbs = self.databases.entry(domain.to_string()).or_insert_with(HashMap::new);
-        domain_dbs.entry(db_name.to_string()).or_insert_with(|| IndexedDbDatabase {
-            name: db_name.to_string(),
-            version,
-            stores: HashMap::new(),
-        });
+        let domain_dbs = self
+            .databases
+            .entry(domain.to_string())
+            .or_insert_with(HashMap::new);
+        domain_dbs
+            .entry(db_name.to_string())
+            .or_insert_with(|| IndexedDbDatabase {
+                name: db_name.to_string(),
+                version,
+                stores: HashMap::new(),
+            });
     }
 
     pub fn create_object_store(&mut self, domain: &str, db_name: &str, store_name: &str) {
         if let Some(domain_dbs) = self.databases.get_mut(domain) {
             if let Some(db) = domain_dbs.get_mut(db_name) {
-                db.stores.entry(store_name.to_string()).or_insert_with(|| ObjectStore {
-                    name: store_name.to_string(),
-                    records: HashMap::new(),
-                });
+                db.stores
+                    .entry(store_name.to_string())
+                    .or_insert_with(|| ObjectStore {
+                        name: store_name.to_string(),
+                        records: HashMap::new(),
+                    });
             }
         }
     }
@@ -55,6 +62,12 @@ impl IndexedDbManager {
     }
 
     pub fn get(&self, domain: &str, db_name: &str, store_name: &str, key: &str) -> Option<&String> {
-        self.databases.get(domain)?.get(db_name)?.stores.get(store_name)?.records.get(key)
+        self.databases
+            .get(domain)?
+            .get(db_name)?
+            .stores
+            .get(store_name)?
+            .records
+            .get(key)
     }
 }

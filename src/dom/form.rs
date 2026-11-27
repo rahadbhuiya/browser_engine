@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use crate::dom::{Dom, NodeType};
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InputType {
@@ -112,7 +112,12 @@ pub struct FormControlState {
 }
 
 impl FormControlState {
-    pub fn new(node_idx: usize, input_type: InputType, name: String, initial_value: String) -> Self {
+    pub fn new(
+        node_idx: usize,
+        input_type: InputType,
+        name: String,
+        initial_value: String,
+    ) -> Self {
         let cursor = initial_value.chars().count();
         FormControlState {
             node_idx,
@@ -229,9 +234,10 @@ impl FormManager {
                     let checked = elem.has_attribute("checked");
                     let disabled = elem.has_attribute("disabled");
 
-                    let state = self.controls.entry(idx).or_insert_with(|| {
-                        FormControlState::new(idx, itype, name, val)
-                    });
+                    let state = self
+                        .controls
+                        .entry(idx)
+                        .or_insert_with(|| FormControlState::new(idx, itype, name, val));
                     state.disabled = disabled;
                     if itype == InputType::Checkbox || itype == InputType::Radio {
                         state.checked = checked;
@@ -241,9 +247,10 @@ impl FormManager {
                     let val = dom.text_content(idx);
                     let disabled = elem.has_attribute("disabled");
 
-                    let state = self.controls.entry(idx).or_insert_with(|| {
-                        FormControlState::new(idx, InputType::Text, name, val)
-                    });
+                    let state = self
+                        .controls
+                        .entry(idx)
+                        .or_insert_with(|| FormControlState::new(idx, InputType::Text, name, val));
                     state.disabled = disabled;
                 } else if tag == "button" {
                     let itype = InputType::from_str(elem.get_attribute("type").unwrap_or("submit"));
@@ -251,9 +258,10 @@ impl FormManager {
                     let val = elem.get_attribute("value").unwrap_or("").to_string();
                     let disabled = elem.has_attribute("disabled");
 
-                    let state = self.controls.entry(idx).or_insert_with(|| {
-                        FormControlState::new(idx, itype, name, val)
-                    });
+                    let state = self
+                        .controls
+                        .entry(idx)
+                        .or_insert_with(|| FormControlState::new(idx, itype, name, val));
                     state.disabled = disabled;
                 }
             }
@@ -311,7 +319,11 @@ impl FormManager {
 }
 
 /// Collects all successful form submittable key-value pairs from a `<form>` element.
-pub fn collect_form_fields(dom: &Dom, form_idx: usize, form_manager: &FormManager) -> Vec<(String, String)> {
+pub fn collect_form_fields(
+    dom: &Dom,
+    form_idx: usize,
+    form_manager: &FormManager,
+) -> Vec<(String, String)> {
     let mut fields = Vec::new();
     let descendants = dom.descendants(form_idx);
 
@@ -322,7 +334,11 @@ pub fn collect_form_fields(dom: &Dom, form_idx: usize, form_manager: &FormManage
             }
 
             match control.input_type {
-                InputType::Text | InputType::Password | InputType::Email | InputType::Number | InputType::Hidden => {
+                InputType::Text
+                | InputType::Password
+                | InputType::Email
+                | InputType::Number
+                | InputType::Hidden => {
                     fields.push((control.name.clone(), control.value.clone()));
                 }
                 InputType::Checkbox | InputType::Radio => {
@@ -353,7 +369,11 @@ pub fn collect_form_fields(dom: &Dom, form_idx: usize, form_manager: &FormManage
 
                 if !name.is_empty() && !disabled {
                     match itype {
-                        InputType::Text | InputType::Password | InputType::Email | InputType::Number | InputType::Hidden => {
+                        InputType::Text
+                        | InputType::Password
+                        | InputType::Email
+                        | InputType::Number
+                        | InputType::Hidden => {
                             fields.push((name.to_string(), val.to_string()));
                         }
                         InputType::Checkbox | InputType::Radio => {
@@ -437,7 +457,9 @@ pub fn build_form_submission(
 
     let action_attr = form_elem.get_attribute("action").unwrap_or("");
     let method_attr = form_elem.get_attribute("method").unwrap_or("GET");
-    let enctype_attr = form_elem.get_attribute("enctype").unwrap_or("application/x-www-form-urlencoded");
+    let enctype_attr = form_elem
+        .get_attribute("enctype")
+        .unwrap_or("application/x-www-form-urlencoded");
 
     let method = FormMethod::from_str(method_attr);
     let enctype = FormEncoding::from_str(enctype_attr);

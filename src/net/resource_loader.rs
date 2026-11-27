@@ -23,7 +23,11 @@ pub fn resolve_url(base_url: &str, relative_path: &str) -> String {
         return rel.to_string();
     }
     if rel.starts_with("//") {
-        let scheme = if base_url.starts_with("https:") { "https:" } else { "http:" };
+        let scheme = if base_url.starts_with("https:") {
+            "https:"
+        } else {
+            "http:"
+        };
         return format!("{}{}", scheme, rel);
     }
 
@@ -51,7 +55,10 @@ pub fn resolve_url(base_url: &str, relative_path: &str) -> String {
         } else {
             "/"
         };
-        format!("{}://{}{}{}{}", scheme_str, parsed_base.host, port_str, dir, rel)
+        format!(
+            "{}://{}{}{}{}",
+            scheme_str, parsed_base.host, port_str, dir, rel
+        )
     }
 }
 
@@ -223,7 +230,10 @@ pub fn decode_base64(input: &str) -> Option<Vec<u8>> {
     for (i, &b) in TABLE.iter().enumerate() {
         lookup[b as usize] = i as u8;
     }
-    let clean: Vec<u8> = input.bytes().filter(|b| !b.is_ascii_whitespace() && *b != b'=').collect();
+    let clean: Vec<u8> = input
+        .bytes()
+        .filter(|b| !b.is_ascii_whitespace() && *b != b'=')
+        .collect();
     let mut out = Vec::with_capacity(clean.len() * 3 / 4);
     for chunk in clean.chunks(4) {
         let b0 = *lookup.get(*chunk.first()? as usize)?;
@@ -274,14 +284,18 @@ mod tests {
 
         // 1x1 valid PNG
         let png_bytes: &[u8] = &[
-            0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D,
-            0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
-            0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4, 0x89, 0x00, 0x00, 0x00,
-            0x0A, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00,
-            0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00, 0x00, 0x00, 0x00, 0x49,
-            0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
+            0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48,
+            0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00,
+            0x00, 0x1F, 0x15, 0xC4, 0x89, 0x00, 0x00, 0x00, 0x0A, 0x49, 0x44, 0x41, 0x54, 0x78,
+            0x9C, 0x63, 0x00, 0x01, 0x00, 0x00, 0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00,
+            0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
         ];
-        pipeline.cache.lock().unwrap().load_from_memory("https://example.com/photo.png", png_bytes).unwrap();
+        pipeline
+            .cache
+            .lock()
+            .unwrap()
+            .load_from_memory("https://example.com/photo.png", png_bytes)
+            .unwrap();
         assert!(pipeline.is_cached("https://example.com/photo.png"));
 
         let img = pipeline.get_image("https://example.com/photo.png").unwrap();

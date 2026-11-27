@@ -1,16 +1,8 @@
-// Batch 2 — CSS Parser
-//
-// Turns a CssToken stream into a Stylesheet (CSSOM). Supports simple selectors
-// (type, class, id, universal), the four combinators (descendant, child,
-// next-sibling, subsequent-sibling), declaration blocks, and `!important`.
-// At-rules (@media, @font-face, ...) are recognized but skipped for now rather
-// than causing a parse failure — real stylesheets always contain at-rules, and
-// a browser that chokes on the first one it doesn't support is a security and
-// robustness problem, not just a missing-feature problem.
+//! CSS stylesheet and rule parser.
 
 use super::cssom::{
-    AttributeMatcher, AttributeSelector, Combinator, Declaration, PseudoClass, Rule, Selector,
-    SimpleSelector, Stylesheet,
+    AttributeMatcher, AttributeSelector, Combinator, Declaration, MediaQuery, PseudoClass, Rule,
+    Selector, SimpleSelector, Stylesheet,
 };
 use super::token::CssToken;
 
@@ -30,9 +22,12 @@ impl CssParser {
             self.skip_whitespace();
             match self.peek() {
                 None | Some(CssToken::Eof) => break,
+                Some(CssToken::AtKeyword(name)) if name.eq_ignore_ascii_case("media") => {
+                    let (_mq, media_rules) = self.parse_media_query();
+                    rules.extend(media_rules);
+                }
                 Some(CssToken::AtKeyword(_)) => self.skip_at_rule(),
                 Some(CssToken::RightBrace) => {
-                    // stray closing brace from malformed input — skip and continue
                     self.pos += 1;
                 }
                 _ => {
@@ -40,10 +35,6 @@ impl CssParser {
                     if let Some(rule) = self.parse_rule() {
                         rules.push(rule);
                     }
-                    // Guarantee forward progress: if parsing a rule consumed
-                    // nothing (e.g. malformed selector with no block), force
-                    // the cursor forward by one token so we never loop forever
-                    // on malformed input.
                     if self.pos == pos_before {
                         self.pos += 1;
                     }
@@ -71,10 +62,8 @@ impl CssParser {
         }
     }
 
-    /// Skip an at-rule entirely: either `@foo ...;` or `@foo ... { ... }`.
-    /// Never panics even if the block is unterminated (stops at EOF).
     fn skip_at_rule(&mut self) {
-        self.pos += 1; // consume the AtKeyword token
+        self.pos += 1;
         loop {
             match self.peek() {
                 None | Some(CssToken::Eof) => return,
@@ -91,6 +80,113 @@ impl CssParser {
                 }
             }
         }
+    }
+
+    fn parse_media_query(&mut self) -> (MediaQuery, Vec<Rule>) {
+        self.pos += 1;
+        self.skip_whitespace();
+
+        let mut mq = MediaQuery::default();
+
+        while let Some(tok) = self.peek() {
+            if matches!(tok, CssToken::LeftBrace | CssToken::Eof) {
+                break;
+            }
+            if matches!(tok, CssToken::LeftParen) {
+                self.pos += 1;
+                self.skip_whitespace();
+
+                let feature = match self.peek() {
+                    Some(CssToken::Ident(s)) => {
+                        let name = s.to_ascii_lowercase();
+                        self.pos += 1;
+                        name
+                    }
+                    _ => String::new(),
+                };
+                self.skip_whitespace();
+
+                if matches!(self.peek(), Some(CssToken::Colon)) {
+                    self.pos += 1;
+                    self.skip_whitespace();
+
+                    let mut num_val = None;
+                    match self.peek() {
+                        Some(CssToken::Number(n)) => {
+                            num_val = Some(*n as f32);
+                            self.pos += 1;
+                        }
+                        Some(CssToken::Ident(id)) => {
+                            let id_lower = id.to_ascii_lowercase();
+                            self.pos += 1;
+                            if feature == "prefers-color-scheme" {
+                                if id_lower == "dark" {
+                                    mq.prefers_dark = Some(true);
+                                } else if id_lower == "light" {
+                                    mq.prefers_dark = Some(false);
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                    self.skip_whitespace();
+
+                    if matches!(self.peek(), Some(CssToken::Ident(_))) {
+                        self.pos += 1;
+                    }
+
+                    if let Some(val) = num_val {
+                        if feature == "min-width" {
+                            mq.min_width = Some(val);
+                        } else if feature == "max-width" {
+                            mq.max_width = Some(val);
+                        }
+                    }
+                }
+
+                while let Some(inner) = self.peek() {
+                    if matches!(
+                        inner,
+                        CssToken::RightParen | CssToken::LeftBrace | CssToken::Eof
+                    ) {
+                        if matches!(inner, CssToken::RightParen) {
+                            self.pos += 1;
+                        }
+                        break;
+                    }
+                    self.pos += 1;
+                }
+            } else {
+                self.pos += 1;
+            }
+            self.skip_whitespace();
+        }
+
+        let mut rules = Vec::new();
+        if matches!(self.peek(), Some(CssToken::LeftBrace)) {
+            self.pos += 1;
+            loop {
+                self.skip_whitespace();
+                match self.peek() {
+                    None | Some(CssToken::Eof) | Some(CssToken::RightBrace) => break,
+                    _ => {
+                        let pos_before = self.pos;
+                        if let Some(mut rule) = self.parse_rule() {
+                            rule.media_query = Some(mq.clone());
+                            rules.push(rule);
+                        }
+                        if self.pos == pos_before {
+                            self.pos += 1;
+                        }
+                    }
+                }
+            }
+            if matches!(self.peek(), Some(CssToken::RightBrace)) {
+                self.pos += 1;
+            }
+        }
+
+        (mq, rules)
     }
 
     /// Consumes a `{ ... }` block, correctly handling nested braces (needed for
@@ -119,10 +215,6 @@ impl CssParser {
             // Either malformed input, or selector syntax we don't support yet
             // (e.g. pseudo-classes like `:hover` — planned for a later batch).
             // Recover by discarding everything up to and including the next
-            // block boundary as one unit, so leftover tokens (like a stray
-            // "hover" identifier) can never be misread as the start of a new
-            // rule. Without this, an unsupported selector silently corrupts
-            // the parse instead of just being dropped.
             self.recover_malformed_rule();
             return None;
         }
@@ -131,6 +223,7 @@ impl CssParser {
         Some(Rule {
             selectors,
             declarations,
+            media_query: None,
         })
     }
 

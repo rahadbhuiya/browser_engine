@@ -1,15 +1,4 @@
-// Batch 3 â€” Layout tree construction
-//
-// Walks the styled DOM and produces a tree of LayoutBoxes: one Block box per
-// block-level element, and an "anonymous" box wrapping each run of inline
-// content (text, inline elements) found between block-level children â€”
-// the same technique real engines use so inline content always has a box
-// to be laid out in, even when it has no element of its own.
-//
-// SIMPLIFICATION: inline elements (e.g. <span>, <a>) are not yet given their
-// own inline boxes â€” their text is flattened into the surrounding run. Proper
-// inline-level boxes (needed for e.g. styling just the <a> text) are future
-// work once real text shaping (Batch 4+) is in place.
+//! Layout tree construction: Block and Anonymous layout boxes.
 
 use std::collections::HashMap;
 
@@ -208,9 +197,18 @@ pub fn build_layout_tree(
         } else if el.tag.eq_ignore_ascii_case("img") {
             let src = el.get_attribute("src").unwrap_or("").to_string();
             let alt = el.get_attribute("alt").unwrap_or("").to_string();
-            let width = el.get_attribute("width").and_then(|w| w.trim().parse::<f32>().ok());
-            let height = el.get_attribute("height").and_then(|h| h.trim().parse::<f32>().ok());
-            layout_box.image_data = Some(ImageBoxData { src, alt, width, height });
+            let width = el
+                .get_attribute("width")
+                .and_then(|w| w.trim().parse::<f32>().ok());
+            let height = el
+                .get_attribute("height")
+                .and_then(|h| h.trim().parse::<f32>().ok());
+            layout_box.image_data = Some(ImageBoxData {
+                src,
+                alt,
+                width,
+                height,
+            });
         }
     }
 

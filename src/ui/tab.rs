@@ -26,10 +26,14 @@ impl Tab {
             url: url.to_string(),
             page_body: {
                 let bm = super::bookmarks::BookmarkManager::new();
-                if let Some((_, html)) = super::internal_pages::render_internal_page(url, &bm, &history) {
+                if let Some((_, html)) =
+                    super::internal_pages::render_internal_page(url, &bm, &history)
+                {
                     html
                 } else {
-                    super::internal_pages::render_internal_page("kestrel://newtab", &bm, &history).unwrap().1
+                    super::internal_pages::render_internal_page("kestrel://newtab", &bm, &history)
+                        .unwrap()
+                        .1
                 }
             },
             scroll_y: 0.0,

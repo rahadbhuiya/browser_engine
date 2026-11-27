@@ -1,6 +1,4 @@
-// Batch 1 — HTML token types
-// These mirror the token categories described in the WHATWG HTML5 tokenization spec:
-// https://html.spec.whatwg.org/multipage/parsing.html#tokenization
+//! HTML token definitions per WHATWG HTML5 tokenization.
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token {

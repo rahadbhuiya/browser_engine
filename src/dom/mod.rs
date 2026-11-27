@@ -106,13 +106,19 @@ mod tests {
         let tokens = Tokenizer::new(html).tokenize();
         let mut dom = build_dom(tokens);
 
-        let first = dom.query_selector("li:first-child").expect("first-child matches");
+        let first = dom
+            .query_selector("li:first-child")
+            .expect("first-child matches");
         assert_eq!(dom.text_content(first), "Item 1");
 
-        let last = dom.query_selector("li:last-child").expect("last-child matches");
+        let last = dom
+            .query_selector("li:last-child")
+            .expect("last-child matches");
         assert_eq!(dom.text_content(last), "Item 3");
 
-        let disabled = dom.query_selector("button:disabled").expect("disabled matches");
+        let disabled = dom
+            .query_selector("button:disabled")
+            .expect("disabled matches");
         assert_eq!(dom.text_content(disabled), "Off");
 
         let btn_idx = dom.get_element_by_id("btn").unwrap();
@@ -156,7 +162,10 @@ mod tests {
         assert!(ok);
 
         let logged = sequence.lock().unwrap().clone();
-        assert_eq!(logged, vec!["parent_capture", "child_target", "parent_bubble"]);
+        assert_eq!(
+            logged,
+            vec!["parent_capture", "child_target", "parent_bubble"]
+        );
     }
 
     #[test]
@@ -186,7 +195,11 @@ mod tests {
 
         assert!(!not_cancelled, "Default prevented");
         assert!(submit_event.is_default_prevented());
-        assert_eq!(parent_called.load(Ordering::SeqCst), 0, "Propagation stopped before parent");
+        assert_eq!(
+            parent_called.load(Ordering::SeqCst),
+            0,
+            "Propagation stopped before parent"
+        );
     }
 
     #[test]
@@ -218,11 +231,15 @@ mod tests {
 
         // Submit form (UrlEncoded)
         let form_idx = dom.get_element_by_id("login").unwrap();
-        let payload = build_form_submission(&dom, form_idx, &form_mgr, "https://example.com/").unwrap();
+        let payload =
+            build_form_submission(&dom, form_idx, &form_mgr, "https://example.com/").unwrap();
 
         assert_eq!(payload.target_url, "https://example.com/api/login");
         assert_eq!(payload.method, FormMethod::Post);
-        assert_eq!(payload.content_type.as_deref(), Some("application/x-www-form-urlencoded"));
+        assert_eq!(
+            payload.content_type.as_deref(),
+            Some("application/x-www-form-urlencoded")
+        );
 
         let body_str = String::from_utf8(payload.body).unwrap();
         assert!(body_str.contains("user=admin_"));
@@ -241,10 +258,14 @@ mod tests {
         form_mgr.scan_dom(&dom);
 
         let form_idx = dom.get_element_by_id("search").unwrap();
-        let payload = build_form_submission(&dom, form_idx, &form_mgr, "https://example.com/app/").unwrap();
+        let payload =
+            build_form_submission(&dom, form_idx, &form_mgr, "https://example.com/app/").unwrap();
 
         assert_eq!(payload.method, FormMethod::Get);
-        assert_eq!(payload.target_url, "https://example.com/app/search.php?q=rust+browser+engine&page=2");
+        assert_eq!(
+            payload.target_url,
+            "https://example.com/app/search.php?q=rust+browser+engine&page=2"
+        );
         assert!(payload.body.is_empty());
     }
 
@@ -258,7 +279,8 @@ mod tests {
         form_mgr.scan_dom(&dom);
 
         let form_idx = dom.get_element_by_id("upload").unwrap();
-        let payload = build_form_submission(&dom, form_idx, &form_mgr, "https://example.com/").unwrap();
+        let payload =
+            build_form_submission(&dom, form_idx, &form_mgr, "https://example.com/").unwrap();
 
         assert_eq!(payload.method, FormMethod::Post);
         let ct = payload.content_type.unwrap();

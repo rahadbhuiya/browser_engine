@@ -92,7 +92,9 @@ mod tests {
         // Verify headings, body, paragraphs are present
         let has_h1 = sheet.rules.iter().any(|r| {
             r.selectors.iter().any(|s| {
-                s.steps.iter().any(|(_, simple)| simple.tag.as_deref() == Some("h1"))
+                s.steps
+                    .iter()
+                    .any(|(_, simple)| simple.tag.as_deref() == Some("h1"))
             })
         });
         assert!(has_h1, "User-agent stylesheet should contain h1 rules");

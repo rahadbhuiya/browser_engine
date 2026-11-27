@@ -101,9 +101,9 @@ pub struct MediaElementState {
     pub controls: bool,
     pub loop_playback: bool,
     pub muted: bool,
-    pub volume: f32, // 0.0 to 1.0
+    pub volume: f32,       // 0.0 to 1.0
     pub current_time: f64, // seconds
-    pub duration: f64, // seconds
+    pub duration: f64,     // seconds
     pub playback_rate: f32,
     pub state: PlaybackState,
     pub buffered_time: f64,
@@ -141,7 +141,11 @@ impl MediaElementState {
                 self.format = detected;
             }
         }
-        self.duration = if estimated_duration > 0.0 { estimated_duration } else { 180.0 }; // default 3 min
+        self.duration = if estimated_duration > 0.0 {
+            estimated_duration
+        } else {
+            180.0
+        }; // default 3 min
         self.buffered_time = self.duration.min(30.0); // initial 30s buffered
         self.state = PlaybackState::Ready;
 
@@ -194,7 +198,14 @@ impl MediaElementState {
         if self.media_type == MediaType::Video {
             let ts = (self.current_time * 1000.0) as u64;
             let shade = ((self.current_time * 15.0) as u8) % 200 + 40;
-            self.current_frame = Some(VideoFrame::new_colored(640, 360, ts, shade, shade / 2, shade + 10));
+            self.current_frame = Some(VideoFrame::new_colored(
+                640,
+                360,
+                ts,
+                shade,
+                shade / 2,
+                shade + 10,
+            ));
         }
     }
 

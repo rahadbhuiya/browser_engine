@@ -1,6 +1,4 @@
-// Batch 3 — Box model geometry
-// Mirrors CSS 2.1's box model: content box, surrounded by padding, border,
-// then margin. All units are CSS pixels (f32) for simplicity in this batch.
+//! Box model geometry: content, padding, border, and margin rectangles.
 
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct Rect {

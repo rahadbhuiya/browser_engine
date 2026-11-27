@@ -1,6 +1,6 @@
 [package]
 name = "browser_engine"
-version = "0.5.0"
+version = "0.6.0"
 edition = "2021"
 authors = ["Rahad Bhuiya <rahadbhuiya2021@gmail.com>"]
 description = "A modular, GPU-accelerated, security-first web browser engine built from scratch in Rust."

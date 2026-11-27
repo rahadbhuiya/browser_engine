@@ -1,17 +1,11 @@
-// Batch 1 (DOM builder) — turns the Batch 1 tokenizer's Token stream into a
-// Dom tree. This is a simplified tree builder: it does not implement the
-// full WHATWG "insertion mode" state machine (no automatic </p> closing
-// before block elements, no foster-parenting for misplaced <table> content,
-// etc). Those refinements are noted as future work at the bottom of this
-// file. What it does guarantee, matching the tokenizer's security posture:
-// it never panics, even on deeply malformed/mismatched tag soup.
+//! Stack-based DOM tree builder.
 
-use crate::html::Token;
 use super::node::{Dom, DomNode, ElementData, NodeType};
+use crate::html::Token;
 
 const VOID_ELEMENTS: &[&str] = &[
-    "area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta",
-    "param", "source", "track", "wbr",
+    "area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source",
+    "track", "wbr",
 ];
 
 pub fn build_dom(tokens: Vec<Token>) -> Dom {
@@ -84,9 +78,3 @@ pub fn build_dom(tokens: Vec<Token>) -> Dom {
 fn matches_tag(node: &DomNode, name: &str) -> bool {
     matches!(&node.node_type, NodeType::Element(e) if e.tag == name)
 }
-
-// Future work (not yet implemented — see ROADMAP.md):
-// - Full HTML5 insertion-mode state machine (implied end tags, e.g. an open
-//   <p> auto-closes when a new block element starts)
-// - Table foster-parenting rules
-// - <template>/<script>/<style> raw-text content handling

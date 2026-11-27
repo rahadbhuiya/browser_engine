@@ -32,13 +32,7 @@ pub fn fetch_and_render_page(url_str: &str) -> (dom::Dom, Vec<paint::PaintComman
 
     let dom_tree = dom::build_dom(html::Tokenizer::new(&html_content).tokenize());
 
-    // --- Batch A fix ---
-    // Previously the CSS the page actually shipped (inline <style> tags and
-    // <link rel="stylesheet"> files) was parsed into `_css_content` and then
-    // silently discarded; every page was rendered against a single hardcoded
-    // rule (`body { color: #333; }`). That meant no page's real styling ever
-    // reached the screen no matter what Batches 2-4 implemented downstream.
-    // We now collect real CSS from the page before building the stylesheet.
+    // Collect CSS from page styles and external stylesheets.
     let mut css_source = String::new();
 
     // 1. Inline <style> element contents.
@@ -59,7 +53,9 @@ pub fn fetch_and_render_page(url_str: &str) -> (dom::Dom, Vec<paint::PaintComman
             }
         }
     } else {
-        css_source.push_str(r#".page { width: 100%; margin: 0; padding: 16px; } .title { color: #38bdf8; }"#);
+        css_source.push_str(
+            r#".page { width: 100%; margin: 0; padding: 16px; } .title { color: #38bdf8; }"#,
+        );
     }
 
     // Baseline so a page that ships zero CSS still isn't completely bare;
@@ -70,7 +66,8 @@ pub fn fetch_and_render_page(url_str: &str) -> (dom::Dom, Vec<paint::PaintComman
     }
 
     let mut stylesheet = css::default_user_agent_stylesheet();
-    let author_stylesheet = css::CssParser::new(css::CssTokenizer::new(&css_source).tokenize()).parse();
+    let author_stylesheet =
+        css::CssParser::new(css::CssTokenizer::new(&css_source).tokenize()).parse();
     stylesheet.rules.extend(author_stylesheet.rules);
     let styles = style::compute_styles(&dom_tree, &stylesheet);
 
@@ -160,7 +157,10 @@ fn navigate_tab(
             }
             Err(err) => (
                 "Fetch Error".to_string(),
-                format!("<div class='card'><h2 style='color: red;'>Fetch Error</h2><p>{}</p></div>", err),
+                format!(
+                    "<div class='card'><h2 style='color: red;'>Fetch Error</h2><p>{}</p></div>",
+                    err
+                ),
             ),
         }
     } else {
@@ -170,7 +170,13 @@ fn navigate_tab(
             .unwrap_or_else(|| {
                 (
                     "Kestrel".to_string(),
-                    ui::render_internal_page("kestrel://newtab", &bm, &tab_manager.active_tab().history).unwrap().1,
+                    ui::render_internal_page(
+                        "kestrel://newtab",
+                        &bm,
+                        &tab_manager.active_tab().history,
+                    )
+                    .unwrap()
+                    .1,
                 )
             })
     };
@@ -216,8 +222,9 @@ fn main() {
     let mut state = pollster::block_on(RenderState::new(window.clone()));
     let mut address_bar = ui::AddressBar::new("kestrel://newtab");
     let mut tab_manager = ui::TabManager::new();
-    let mut bookmark_manager = ui::BookmarkManager::load_from_disk(&ui::BookmarkManager::default_storage_path())
-        .unwrap_or_else(|_| ui::BookmarkManager::new());
+    let mut bookmark_manager =
+        ui::BookmarkManager::load_from_disk(&ui::BookmarkManager::default_storage_path())
+            .unwrap_or_else(|_| ui::BookmarkManager::new());
     let cookie_jar = net::CookieJar::load_from_disk(&net::CookieJar::default_storage_path())
         .unwrap_or_else(|_| net::CookieJar::new());
     let mut tracker_blocker = security::TrackerBlocker::new();
@@ -853,9 +860,8 @@ mod css_tests {
 
     #[test]
     fn skips_at_rules_without_crashing() {
-        let sheet = parse("@media (max-width: 600px) { .card { width: 100%; } } p { color: red; }");
-        // the @media block is skipped wholesale in this batch; only the
-        // trailing rule outside it should show up
+        let sheet =
+            parse("@font-face { font-family: 'Test'; src: url('test.woff'); } p { color: red; }");
         assert_eq!(sheet.rules.len(), 1);
         assert_eq!(sheet.rules[0].declarations[0].property, "color");
     }
@@ -1069,7 +1075,9 @@ mod batch3_tests {
         let a_idx = dom.nodes[div_idx].children[1];
 
         assert_eq!(
-            styles.get(&input_idx).and_then(|s| s.get("background-color")),
+            styles
+                .get(&input_idx)
+                .and_then(|s| s.get("background-color")),
             Some(&"#eee".to_string())
         );
         assert_eq!(
@@ -1088,8 +1096,14 @@ mod batch3_tests {
         let div_idx = dom.nodes[dom.root].children[0];
         let p_idx = dom.nodes[div_idx].children[0];
 
-        assert_eq!(styles.get(&div_idx).and_then(|s| s.get("--accent")), Some(&"#38bdf8".to_string()));
-        assert_eq!(styles.get(&p_idx).and_then(|s| s.get("color")), Some(&"#38bdf8".to_string()));
+        assert_eq!(
+            styles.get(&div_idx).and_then(|s| s.get("--accent")),
+            Some(&"#38bdf8".to_string())
+        );
+        assert_eq!(
+            styles.get(&p_idx).and_then(|s| s.get("color")),
+            Some(&"#38bdf8".to_string())
+        );
     }
 
     #[test]
@@ -1102,7 +1116,10 @@ mod batch3_tests {
         let div_idx = dom.nodes[dom.root].children[0];
         let p_idx = dom.nodes[div_idx].children[0];
 
-        assert_eq!(styles.get(&p_idx).and_then(|s| s.get("color")), Some(&"#10b981".to_string()));
+        assert_eq!(
+            styles.get(&p_idx).and_then(|s| s.get("color")),
+            Some(&"#10b981".to_string())
+        );
     }
 
     #[test]
@@ -1118,11 +1135,111 @@ mod batch3_tests {
         let p_idx = dom.nodes[div_idx].children[1];
 
         // h1 has custom color from author sheet
-        assert_eq!(styles.get(&h1_idx).and_then(|s| s.get("color")), Some(&"#dc2626".to_string()));
+        assert_eq!(
+            styles.get(&h1_idx).and_then(|s| s.get("color")),
+            Some(&"#dc2626".to_string())
+        );
         // h1 retains user-agent font-weight: bold and font-size: 28px
-        assert_eq!(styles.get(&h1_idx).and_then(|s| s.get("font-weight")), Some(&"bold".to_string()));
-        assert_eq!(styles.get(&h1_idx).and_then(|s| s.get("font-size")), Some(&"28px".to_string()));
+        assert_eq!(
+            styles.get(&h1_idx).and_then(|s| s.get("font-weight")),
+            Some(&"bold".to_string())
+        );
+        assert_eq!(
+            styles.get(&h1_idx).and_then(|s| s.get("font-size")),
+            Some(&"28px".to_string())
+        );
         // p gets user agent default block display
-        assert_eq!(styles.get(&p_idx).and_then(|s| s.get("display")), Some(&"block".to_string()));
+        assert_eq!(
+            styles.get(&p_idx).and_then(|s| s.get("display")),
+            Some(&"block".to_string())
+        );
+    }
+
+    #[test]
+    fn test_media_queries_viewport_and_color_scheme() {
+        use super::style::compute_styles_with_viewport;
+        let (dom, sheet) = build(
+            r#"<div><p>Responsive text</p></div>"#,
+            r#"p { color: #111827; } @media (max-width: 600px) { p { color: #3b82f6; } } @media (prefers-color-scheme: dark) { p { background: #000000; } }"#,
+        );
+        let div_idx = dom.nodes[dom.root].children[0];
+        let p_idx = dom.nodes[div_idx].children[0];
+
+        // Desktop viewport (1024px, light)
+        let desktop_styles = compute_styles_with_viewport(&dom, &sheet, 1024.0, false);
+        assert_eq!(
+            desktop_styles.get(&p_idx).and_then(|s| s.get("color")),
+            Some(&"#111827".to_string())
+        );
+        assert_eq!(
+            desktop_styles.get(&p_idx).and_then(|s| s.get("background")),
+            None
+        );
+
+        // Mobile viewport (500px, light) -> triggers max-width: 600px
+        let mobile_styles = compute_styles_with_viewport(&dom, &sheet, 500.0, false);
+        assert_eq!(
+            mobile_styles.get(&p_idx).and_then(|s| s.get("color")),
+            Some(&"#3b82f6".to_string())
+        );
+        assert_eq!(
+            mobile_styles.get(&p_idx).and_then(|s| s.get("background")),
+            None
+        );
+
+        // Mobile dark mode (500px, dark) -> triggers both max-width and prefers-color-scheme: dark
+        let dark_styles = compute_styles_with_viewport(&dom, &sheet, 500.0, true);
+        assert_eq!(
+            dark_styles.get(&p_idx).and_then(|s| s.get("color")),
+            Some(&"#3b82f6".to_string())
+        );
+        assert_eq!(
+            dark_styles.get(&p_idx).and_then(|s| s.get("background")),
+            Some(&"#000000".to_string())
+        );
+    }
+
+    #[test]
+    fn test_css_grid_track_sizing_and_placement() {
+        let (dom, sheet) = build(
+            r#"<div class="grid"><div class="item">1</div><div class="item">2</div><div class="item">3</div><div class="item">4</div></div>"#,
+            r#".grid { display: grid; width: 620px; grid-template-columns: repeat(3, 200px); gap: 10px; } .item { height: 50px; }"#,
+        );
+        let styles = compute_styles(&dom, &sheet);
+        let mut root_box = build_layout_tree(&dom, &styles, dom.root).unwrap();
+        layout_tree(&mut root_box, 800.0, &styles);
+
+        let grid_box = &root_box.children[0];
+        assert_eq!(grid_box.dimensions.content.width, 620.0);
+        assert_eq!(grid_box.children.len(), 4);
+
+        // Row 0: 3 items with 10px gap
+        assert_eq!(grid_box.children[0].dimensions.content.x, 0.0);
+        assert_eq!(grid_box.children[0].dimensions.content.y, 0.0);
+        assert_eq!(grid_box.children[1].dimensions.content.x, 210.0);
+        assert_eq!(grid_box.children[1].dimensions.content.y, 0.0);
+        assert_eq!(grid_box.children[2].dimensions.content.x, 420.0);
+        assert_eq!(grid_box.children[2].dimensions.content.y, 0.0);
+
+        // Row 1: 4th item wrapped to next line
+        assert_eq!(grid_box.children[3].dimensions.content.x, 0.0);
+        assert_eq!(grid_box.children[3].dimensions.content.y, 60.0); // 50px height + 10px row-gap
+    }
+
+    #[test]
+    fn test_flexbox_wrap_and_grow() {
+        let (dom, sheet) = build(
+            r#"<div class="flex-container"><div class="c1">A</div><div class="c2">B</div></div>"#,
+            r#".flex-container { display: flex; width: 300px; } .c1 { width: 100px; flex-grow: 1; } .c2 { width: 100px; flex-grow: 1; }"#,
+        );
+        let styles = compute_styles(&dom, &sheet);
+        let mut root_box = build_layout_tree(&dom, &styles, dom.root).unwrap();
+        layout_tree(&mut root_box, 800.0, &styles);
+
+        let flex_box = &root_box.children[0];
+        // 300px container with two items (100px initial width each, free space 100px, 50px grow each)
+        assert_eq!(flex_box.children[0].dimensions.content.width, 150.0);
+        assert_eq!(flex_box.children[1].dimensions.content.width, 150.0);
+        assert_eq!(flex_box.children[1].dimensions.content.x, 150.0);
     }
 }

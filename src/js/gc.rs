@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use super::bytecode::Value;
+use std::collections::HashMap;
 
 pub type GcId = usize;
 

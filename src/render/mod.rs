@@ -1,13 +1,13 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use wgpu::util::DeviceExt;
-use winit::window::Window;
 use wgpu_glyph::{ab_glyph, GlyphBrush, GlyphBrushBuilder, Section, Text};
+use winit::window::Window;
 
 pub mod image_decoder;
 pub use image_decoder::{DecodedImage, ImageCache};
 
-use crate::paint::{PaintCommand, Color};
+use crate::paint::{Color, PaintCommand};
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -46,17 +46,37 @@ pub struct ViewportUniform {
 }
 
 const VERTICES: &[Vertex] = &[
-    Vertex { position: [0.0, 0.0] },
-    Vertex { position: [1.0, 0.0] },
-    Vertex { position: [0.0, 1.0] },
-    Vertex { position: [1.0, 1.0] },
+    Vertex {
+        position: [0.0, 0.0],
+    },
+    Vertex {
+        position: [1.0, 0.0],
+    },
+    Vertex {
+        position: [0.0, 1.0],
+    },
+    Vertex {
+        position: [1.0, 1.0],
+    },
 ];
 
 const IMAGE_VERTICES: &[ImageVertex] = &[
-    ImageVertex { position: [0.0, 0.0], uv: [0.0, 0.0] },
-    ImageVertex { position: [1.0, 0.0], uv: [1.0, 0.0] },
-    ImageVertex { position: [0.0, 1.0], uv: [0.0, 1.0] },
-    ImageVertex { position: [1.0, 1.0], uv: [1.0, 1.0] },
+    ImageVertex {
+        position: [0.0, 0.0],
+        uv: [0.0, 0.0],
+    },
+    ImageVertex {
+        position: [1.0, 0.0],
+        uv: [1.0, 0.0],
+    },
+    ImageVertex {
+        position: [0.0, 1.0],
+        uv: [0.0, 1.0],
+    },
+    ImageVertex {
+        position: [1.0, 1.0],
+        uv: [1.0, 1.0],
+    },
 ];
 
 pub struct RenderState {
@@ -334,7 +354,8 @@ impl RenderState {
                         ],
                     },
                     wgpu::VertexBufferLayout {
-                        array_stride: std::mem::size_of::<ImageInstanceRaw>() as wgpu::BufferAddress,
+                        array_stride: std::mem::size_of::<ImageInstanceRaw>()
+                            as wgpu::BufferAddress,
                         step_mode: wgpu::VertexStepMode::Instance,
                         attributes: &[
                             wgpu::VertexAttribute {
@@ -494,11 +515,16 @@ impl RenderState {
                 ],
                 label: Some(url),
             });
-            self.gpu_image_cache.insert(url.to_string(), (texture, bind_group));
+            self.gpu_image_cache
+                .insert(url.to_string(), (texture, bind_group));
         }
     }
 
-    pub fn render(&mut self, paint_commands: &[PaintCommand], scroll_y: f32) -> Result<(), wgpu::SurfaceError> {
+    pub fn render(
+        &mut self,
+        paint_commands: &[PaintCommand],
+        scroll_y: f32,
+    ) -> Result<(), wgpu::SurfaceError> {
         self.render_with_cache(paint_commands, scroll_y, None)
     }
 
@@ -513,9 +539,11 @@ impl RenderState {
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
 
-        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Render Encoder"),
-        });
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Render Encoder"),
+            });
 
         // 1. Separate Rectangles, Images, and Text Commands
         let mut instances = Vec::new();
@@ -526,8 +554,17 @@ impl RenderState {
 
         for cmd in paint_commands {
             match cmd {
-                PaintCommand::DrawRect { rect, color, border_radius, is_fixed } => {
-                    let y_pos = if *is_fixed { rect.y } else { CONTENT_TOP + rect.y - scroll_y };
+                PaintCommand::DrawRect {
+                    rect,
+                    color,
+                    border_radius,
+                    is_fixed,
+                } => {
+                    let y_pos = if *is_fixed {
+                        rect.y
+                    } else {
+                        CONTENT_TOP + rect.y - scroll_y
+                    };
                     if !*is_fixed {
                         if y_pos + rect.height <= CONTENT_TOP {
                             continue;
@@ -555,26 +592,48 @@ impl RenderState {
                         });
                     }
                 }
-                PaintCommand::DrawText { text, rect, color, font_size, is_fixed } => {
-                    let y_pos = if *is_fixed { rect.y } else { CONTENT_TOP + rect.y - scroll_y };
+                PaintCommand::DrawText {
+                    text,
+                    rect,
+                    color,
+                    font_size,
+                    is_fixed,
+                } => {
+                    let y_pos = if *is_fixed {
+                        rect.y
+                    } else {
+                        CONTENT_TOP + rect.y - scroll_y
+                    };
                     if !*is_fixed && y_pos < CONTENT_TOP {
                         continue;
                     }
-                    text_sections.push((
-                        text.clone(),
-                        [rect.x, y_pos],
-                        *color,
-                        *font_size,
-                    ));
+                    text_sections.push((text.clone(), [rect.x, y_pos], *color, *font_size));
                 }
-                PaintCommand::DrawImage { rect, src, alt, is_fixed } => {
-                    let y_pos = if *is_fixed { rect.y } else { CONTENT_TOP + rect.y - scroll_y };
+                PaintCommand::DrawImage {
+                    rect,
+                    src,
+                    alt,
+                    is_fixed,
+                } => {
+                    let y_pos = if *is_fixed {
+                        rect.y
+                    } else {
+                        CONTENT_TOP + rect.y - scroll_y
+                    };
                     if !*is_fixed && y_pos + rect.height <= CONTENT_TOP {
                         continue;
                     }
-                    let actual_y = if !*is_fixed { y_pos.max(CONTENT_TOP) } else { y_pos };
+                    let actual_y = if !*is_fixed {
+                        y_pos.max(CONTENT_TOP)
+                    } else {
+                        y_pos
+                    };
                     let diff = actual_y - y_pos;
-                    let actual_h = if !*is_fixed { (rect.height - diff).max(0.0) } else { rect.height };
+                    let actual_h = if !*is_fixed {
+                        (rect.height - diff).max(0.0)
+                    } else {
+                        rect.height
+                    };
                     if actual_h <= 0.0 {
                         continue;
                     }
@@ -597,7 +656,8 @@ impl RenderState {
                             _padding: [0.0; 3],
                         });
                         if actual_y >= CONTENT_TOP {
-                            let label = format!("Image [{}]", if alt.is_empty() { "Graphic" } else { alt });
+                            let label =
+                                format!("Image [{}]", if alt.is_empty() { "Graphic" } else { alt });
                             text_sections.push((
                                 label,
                                 [rect.x + 8.0, actual_y + 8.0],
@@ -611,11 +671,13 @@ impl RenderState {
         }
 
         // 2. Upload Instance Buffer for Rectangles
-        let instance_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Instance Buffer"),
-            contents: bytemuck::cast_slice(&instances),
-            usage: wgpu::BufferUsages::VERTEX,
-        });
+        let instance_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Instance Buffer"),
+                contents: bytemuck::cast_slice(&instances),
+                usage: wgpu::BufferUsages::VERTEX,
+            });
 
         // 3. Render Pass for Rectangles & Images
         {
@@ -655,11 +717,13 @@ impl RenderState {
                         position: *pos,
                         size: *size,
                     };
-                    let img_instance_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                        label: Some("Image Instance Buffer"),
-                        contents: bytemuck::cast_slice(&[img_instance]),
-                        usage: wgpu::BufferUsages::VERTEX,
-                    });
+                    let img_instance_buffer =
+                        self.device
+                            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                                label: Some("Image Instance Buffer"),
+                                contents: bytemuck::cast_slice(&[img_instance]),
+                                usage: wgpu::BufferUsages::VERTEX,
+                            });
                     render_pass.set_pipeline(&self.image_pipeline);
                     render_pass.set_bind_group(0, &self.viewport_bind_group, &[]);
                     render_pass.set_bind_group(1, bind_group, &[]);
@@ -674,7 +738,10 @@ impl RenderState {
         for (text, pos, color, font_size) in text_sections {
             self.glyph_brush.queue(Section {
                 screen_position: (pos[0], pos[1]),
-                bounds: (self.size.width as f32 - pos[0], self.size.height as f32 - pos[1]),
+                bounds: (
+                    self.size.width as f32 - pos[0],
+                    self.size.height as f32 - pos[1],
+                ),
                 text: vec![Text::new(&text)
                     .with_color([color.r, color.g, color.b, color.a])
                     .with_scale(font_size)],
@@ -711,12 +778,11 @@ mod tests {
     #[test]
     fn test_image_cache_decoding() {
         let png_bytes: &[u8] = &[
-            0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D,
-            0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
-            0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4, 0x89, 0x00, 0x00, 0x00,
-            0x0A, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00,
-            0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00, 0x00, 0x00, 0x00, 0x49,
-            0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
+            0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48,
+            0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00,
+            0x00, 0x1F, 0x15, 0xC4, 0x89, 0x00, 0x00, 0x00, 0x0A, 0x49, 0x44, 0x41, 0x54, 0x78,
+            0x9C, 0x63, 0x00, 0x01, 0x00, 0x00, 0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00,
+            0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
         ];
 
         let mut cache = ImageCache::new();

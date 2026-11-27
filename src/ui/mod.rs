@@ -52,7 +52,10 @@ mod tests {
         assert_eq!(history.go_back(), Some("http://example.com".to_string()));
 
         assert!(history.can_go_forward());
-        assert_eq!(history.go_forward(), Some("http://example.com/page2".to_string()));
+        assert_eq!(
+            history.go_forward(),
+            Some("http://example.com/page2".to_string())
+        );
     }
 
     #[test]
@@ -69,7 +72,10 @@ mod tests {
         let mut tab = Tab::new(1, "Google", "https://google.com");
         tab.navigate_to("Example", "https://example.com", "body");
         assert!(tab.history.can_go_back());
-        assert_eq!(tab.history.go_back(), Some("https://google.com".to_string()));
+        assert_eq!(
+            tab.history.go_back(),
+            Some("https://google.com".to_string())
+        );
     }
 
     #[test]
@@ -88,7 +94,10 @@ mod tests {
         assert_eq!(mgr.get_tab_at_click(50.0, 20.0), Some(0));
 
         let b_mgr = BookmarkManager::new();
-        assert_eq!(b_mgr.get_url_at_click(100.0, 90.0), Some("https://google.com".to_string()));
+        assert_eq!(
+            b_mgr.get_url_at_click(100.0, 90.0),
+            Some("https://google.com".to_string())
+        );
     }
 
     #[test]
@@ -228,23 +237,27 @@ mod tests {
         assert!(html.contains("Search the web"));
 
         // About
-        let (about_title, about_html) = render_internal_page("kestrel://about", &bm, &history).unwrap();
+        let (about_title, about_html) =
+            render_internal_page("kestrel://about", &bm, &history).unwrap();
         assert_eq!(about_title, "About Kestrel");
         assert!(about_html.contains("Rahad Bhuiya"));
         assert!(about_html.contains("Zero-Chromium"));
 
         // Settings
-        let (settings_title, settings_html) = render_internal_page("kestrel://settings", &bm, &history).unwrap();
+        let (settings_title, settings_html) =
+            render_internal_page("kestrel://settings", &bm, &history).unwrap();
         assert_eq!(settings_title, "Settings");
         assert!(settings_html.contains("Privacy &amp; Security"));
 
         // History
-        let (hist_title, hist_html) = render_internal_page("kestrel://history", &bm, &history).unwrap();
+        let (hist_title, hist_html) =
+            render_internal_page("kestrel://history", &bm, &history).unwrap();
         assert_eq!(hist_title, "Browsing History");
         assert!(hist_html.contains("Browsing History"));
 
         // Bookmarks
-        let (bm_title, bm_html) = render_internal_page("kestrel://bookmarks", &bm, &history).unwrap();
+        let (bm_title, bm_html) =
+            render_internal_page("kestrel://bookmarks", &bm, &history).unwrap();
         assert_eq!(bm_title, "Bookmarks");
         assert!(bm_html.contains("Saved Bookmarks"));
 
@@ -252,7 +265,3 @@ mod tests {
         assert!(render_internal_page("https://google.com", &bm, &history).is_none());
     }
 }
-
-
-
-

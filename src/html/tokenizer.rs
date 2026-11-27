@@ -1,13 +1,4 @@
-// Batch 1 — HTML Tokenizer
-//
-// A simplified but spec-inspired state machine, following the shape of the WHATWG
-// HTML5 tokenization states (https://html.spec.whatwg.org/multipage/parsing.html).
-// We don't implement every one of the ~80 spec states yet, but the ones here cover
-// real-world HTML: tags, attributes, comments, doctype, and text.
-//
-// SECURITY NOTE: the tokenizer must never panic on malformed input. Every state
-// transition has a defined fallback so garbage/attacker-controlled HTML degrades
-// gracefully into text/error-recovery instead of crashing the process.
+//! WHATWG HTML5 tokenization state machine.
 
 use super::token::Token;
 
@@ -591,9 +582,15 @@ mod tests {
 
     #[test]
     fn test_decode_html_entities() {
-        assert_eq!(decode_html_entities("&lt;div&gt;Hello &amp; world&lt;/div&gt;"), "<div>Hello & world</div>");
+        assert_eq!(
+            decode_html_entities("&lt;div&gt;Hello &amp; world&lt;/div&gt;"),
+            "<div>Hello & world</div>"
+        );
         assert_eq!(decode_html_entities("Close &times; now"), "Close × now");
-        assert_eq!(decode_html_entities("Bullet &bull; point"), "Bullet • point");
+        assert_eq!(
+            decode_html_entities("Bullet &bull; point"),
+            "Bullet • point"
+        );
         assert_eq!(decode_html_entities("Reload &#x21bb;"), "Reload ↻");
     }
 }

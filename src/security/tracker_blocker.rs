@@ -58,7 +58,10 @@ impl TrackerBlocker {
                 ("pixel.wp.com", TrackerCategory::Analytics),
                 ("doubleclick.net", TrackerCategory::Advertising),
                 ("adservice.google.com", TrackerCategory::Advertising),
-                ("pagead2.googlesyndication.com", TrackerCategory::Advertising),
+                (
+                    "pagead2.googlesyndication.com",
+                    TrackerCategory::Advertising,
+                ),
                 ("adnxs.com", TrackerCategory::Advertising),
                 ("criteo.com", TrackerCategory::Advertising),
                 ("facebook.com/tr", TrackerCategory::Fingerprinting),
@@ -221,22 +224,13 @@ mod tests {
         assert!(!blocker.intercept("https://github.com/rahadbhuiya/browser_engine"));
 
         assert_eq!(blocker.total_blocked(), 4);
-        assert_eq!(
-            blocker.blocked_by_category(TrackerCategory::Analytics),
-            1
-        );
-        assert_eq!(
-            blocker.blocked_by_category(TrackerCategory::Advertising),
-            1
-        );
+        assert_eq!(blocker.blocked_by_category(TrackerCategory::Analytics), 1);
+        assert_eq!(blocker.blocked_by_category(TrackerCategory::Advertising), 1);
         assert_eq!(
             blocker.blocked_by_category(TrackerCategory::Fingerprinting),
             1
         );
-        assert_eq!(
-            blocker.blocked_by_category(TrackerCategory::Telemetry),
-            1
-        );
+        assert_eq!(blocker.blocked_by_category(TrackerCategory::Telemetry), 1);
     }
 
     #[test]

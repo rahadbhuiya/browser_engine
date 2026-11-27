@@ -24,4 +24,4 @@ pub use dom::{build_dom, Dom, DomEvent, EventRegistry, FormManager};
 pub use html::Tokenizer;
 pub use layout::{build_layout_tree, layout_tree};
 pub use media::{MediaControls, MediaElementState, MediaManager, MediaType, PlaybackState};
-pub use style::compute_styles;
+pub use style::{compute_styles, compute_styles_with_viewport};

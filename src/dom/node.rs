@@ -1,10 +1,4 @@
-// Batch 1 (completed here as a prerequisite for Batch 3) -- DOM tree
-//
-// Uses an arena (flat Vec of nodes with index-based parent/child links)
-// instead of Rc<RefCell<...>> pointer trees. This is deliberate: arena
-// indices make ancestor/sibling walks (needed for CSS combinator matching in
-// Batch 3) simple and panic-free, and avoid the borrow-checker fights that
-// come with a pointer-based tree in Rust.
+//! Arena-based DOM tree representations.
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum NodeType {

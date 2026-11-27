@@ -32,7 +32,11 @@ impl StorageManager {
     }
 
     pub fn set_cookie(&mut self, domain: &str, name: &str, value: &str) {
-        if let Some(cookie) = self.cookies.iter_mut().find(|c| c.domain == domain && c.name == name) {
+        if let Some(cookie) = self
+            .cookies
+            .iter_mut()
+            .find(|c| c.domain == domain && c.name == name)
+        {
             cookie.value = value.to_string();
         } else {
             self.cookies.push(Cookie {
@@ -44,7 +48,8 @@ impl StorageManager {
     }
 
     pub fn get_cookies(&self, domain: &str) -> String {
-        let matching: Vec<String> = self.cookies
+        let matching: Vec<String> = self
+            .cookies
             .iter()
             .filter(|c| c.domain == domain)
             .map(|c| format!("{}={}", c.name, c.value))

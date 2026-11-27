@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use crate::dom::Dom;
+use std::collections::HashMap;
 
 /// W3C DOM Event Flow phases.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -27,7 +27,12 @@ pub struct DomEvent {
 }
 
 impl DomEvent {
-    pub fn new(event_type: impl Into<String>, target: usize, bubbles: bool, cancelable: bool) -> Self {
+    pub fn new(
+        event_type: impl Into<String>,
+        target: usize,
+        bubbles: bool,
+        cancelable: bool,
+    ) -> Self {
         DomEvent {
             event_type: event_type.into(),
             target,
@@ -193,12 +198,7 @@ impl EventRegistry {
         }
     }
 
-    fn trigger_target_listeners(
-        &mut self,
-        node_idx: usize,
-        event: &mut DomEvent,
-        dom: &mut Dom,
-    ) {
+    fn trigger_target_listeners(&mut self, node_idx: usize, event: &mut DomEvent, dom: &mut Dom) {
         if let Some(list) = self.listeners.get_mut(&node_idx) {
             let matching_indices: Vec<usize> = list
                 .iter()
